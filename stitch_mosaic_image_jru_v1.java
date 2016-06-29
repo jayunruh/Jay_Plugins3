@@ -52,7 +52,7 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 	public Object[] exec(ImagePlus imp,ImageWindow iw){
 		float[][] xvals=(float[][])jutils.runPW4VoidMethod(iw,"getXValues");
 		float[][] yvals=(float[][])jutils.runPW4VoidMethod(iw,"getYValues");
-		int sel=(Integer)jutils.runPW4VoidMethod(iw,"getSelected");
+		int sel=(Integer)jutils.runPW4VoidMethod(iw,"getSelected"); if(sel<0) sel=0;
 		float[] overlap=getAvgOverlap(new float[][]{xvals[sel],yvals[sel]},imp.getWidth(),imp.getHeight());
 		IJ.log("avg overlap = "+overlap[0]+" , "+overlap[1]);
 		return exec(imp,xvals[sel],yvals[sel],overlap[0],overlap[1]);
