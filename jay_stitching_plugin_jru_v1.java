@@ -76,6 +76,7 @@ public class jay_stitching_plugin_jru_v1 implements PlugIn, gui_interface {
 			IJ.log("peak statistics");
 			for(int i=0;i<pairs.length;i++){
 				int pair1=pairs[i][0]; int pair2=pairs[i][1];
+				IJ.log(""+pair1+ " <- "+pair2+":");
 				float predxshift=coords[0][pair2]-coords[0][pair1];
     				float predyshift=coords[1][pair2]-coords[1][pair1];
 				stats[i][0]=(float)pair1; stats[i][1]=(float)pair2;
@@ -86,7 +87,6 @@ public class jay_stitching_plugin_jru_v1 implements PlugIn, gui_interface {
 				//peaks are ranked in order of decreasing correlation
 				//float[] bestpeak=findClosestPeak(peaks,new float[]{predxshift,predyshift});
 				float[] bestpeak=peaks[0];
-				IJ.log(""+pair1+ " <- "+pair2+":");
 				for(int j=0;j<peaks.length;j++){
 					IJ.log(""+peaks[j][4]+" , "+peaks[j][0]+" , "+peaks[j][1]+" , "+peaks[j][2]);
 				}

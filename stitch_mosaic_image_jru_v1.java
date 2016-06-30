@@ -24,7 +24,11 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 		ImageWindow[] iws=jutils.selectPlots(false,1,new String[]{"Position_Plot"});
 		if(iws==null) return;
 		Object[] retvals=exec(imp,iws[0]);
-		((ImagePlus)retvals[0]).show();
+		ImagePlus retimp=(ImagePlus)retvals[0];
+		if(imp.getNChannels()==1) retimp.show();
+		else{
+			(new CompositeImage(retimp,CompositeImage.COLOR)).show();
+		}
 	}
 
 	public static float[] getAvgOverlap(float[][] coords,int width,int height){
