@@ -23,10 +23,12 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 		gd.addChoice("Statistic",jstatistics.stats,"Avg");
 		gd.addNumericField("Measure_Radius",5.0,5,15,null);
 		gd.addNumericField("Measure_Radius_Z (optional)",5.0,5,15,null);
+		gd.addNumericField("Z_Ratio",1.0,5,15,null);
 		gd.showDialog(); if(gd.wasCanceled()){return;}
 		String stat=jstatistics.stats[gd.getNextChoiceIndex()];
 		float rad=(float)gd.getNextNumber();
 		float zrad=(float)gd.getNextNumber();
+		float zratio=(float)gd.getNextNumber();
 		ImageWindow iw=imps[1].getWindow();
 		float[][] xvals=(float[][])jutils.runPW4VoidMethod(iw,"getXValues");
 		float[][] yvals=(float[][])jutils.runPW4VoidMethod(iw,"getYValues");
@@ -62,7 +64,7 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 				float[] circ=null;
 				if(threed){
 					Object[] frame=jutils.get3DZSeries(stack,currchan-1,j,frames,slices,channels);
-					circ=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start],rad,zrad);
+					circ=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
 				} else { 
 					Object frame=jutils.get3DSlice(stack,j,0,currchan-1,frames,slices,channels);
 					circ=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad);
@@ -111,6 +113,10 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 	}
 
 	public float[] getSphereVals(Object[] image,int width,int height,float xc,float yc,float zc,float rad,float zrad){
+		if(rad==0.0f && zrad==0.0f){
+			float temp=interpolation.interp3D(image,width,height,xc,yc,zc);
+			return new float[]{temp};
+		}
 		int size=(int)(2.0f*rad+1.0f);
 		int zsize=(int)(2.0f*zrad+1.0f);
 		int slices=image.length;

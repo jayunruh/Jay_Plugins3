@@ -16,7 +16,7 @@ import jalgs.*;
 
 public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_interface {
 	boolean showrois;
-	int tempchan,tempslice,tempframe,slices,channels,frames;
+	int tempchan,tempslice,tempframe,slices,channels,frames,trueframes;
 	ImageStack tempstack;
 
 	public void run(String arg) {
@@ -72,20 +72,25 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 		if(frames==1){
 			frames=slices; slices=1;
 		}
+		trueframes=1;
+		if(frames>xvals.length){
+			trueframes=(int)(frames/xvals.length);
+			frames=xvals.length;
+		}
 		float psize=(float)jutils.get_psize(imp);
 		int typeindex=algutils.get_array_type(stack.getPixels(1));
 		stitching sclass=new stitching(width,height,xvals,yvals,psize,typeindex,this);
 		ImageStack stack2=new ImageStack(sclass.newwidth,sclass.newheight);
 		tempstack=stack;
-		for(int i=0;i<slices;i++){
-			for(int j=0;j<channels;j++){
-				tempchan=j;
-				tempslice=i;
-				tempframe=0;
-				//Object[] tseries=jutils.get3DTSeries(stack,i,j,frames,slices,channels);
-				//Object stitched=sclass.stitch_frame(tseries,true,overlap);
-				Object stitched=sclass.stitch_frame(this,frames,true,hoverlap,voverlap);
-				stack2.addSlice("",stitched);
+		for(int k=0;k<trueframes;k++){
+			for(int i=0;i<slices;i++){
+				for(int j=0;j<channels;j++){
+					tempchan=j;
+					tempslice=i;
+					tempframe=k*frames;
+					Object stitched=sclass.stitch_frame(this,frames,true,hoverlap,voverlap);
+					stack2.addSlice("",stitched);
+				}
 			}
 		}
 		if(showrois){
@@ -99,7 +104,7 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 		ImagePlus imp5=new ImagePlus("Stitched Image",stack2);
 		imp5.copyScale(imp);
 		imp5.setOpenAsHyperStack(true);
-		imp5.setDimensions(channels,slices,1);
+		imp5.setDimensions(channels,slices,trueframes);
 		//imp5.show();
 		return new Object[]{imp5};
 	}
