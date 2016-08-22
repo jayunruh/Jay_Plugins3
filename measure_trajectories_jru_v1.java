@@ -61,12 +61,14 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 				start=(int)Float.parseFloat(starts[i]);
 			}
 			for(int j=start;j<(start+npts[i]);j++){
+				int tpos=j;
+				if(frames==1) tpos=0;
 				float[] circ=null;
 				if(threed){
-					Object[] frame=jutils.get3DZSeries(stack,currchan-1,j,frames,slices,channels);
+					Object[] frame=jutils.get3DZSeries(stack,currchan-1,tpos,frames,slices,channels);
 					circ=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
 				} else { 
-					Object frame=jutils.get3DSlice(stack,j,0,currchan-1,frames,slices,channels);
+					Object frame=jutils.get3DSlice(stack,tpos,0,currchan-1,frames,slices,channels);
 					circ=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad);
 				}
 				stats[counter][0]=i;

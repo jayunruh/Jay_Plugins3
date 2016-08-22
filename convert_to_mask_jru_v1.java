@@ -26,6 +26,7 @@ public class convert_to_mask_jru_v1 implements PlugIn {
 			byte[] mask=findblobs3.threshimage(pixels,0.5f);
 			stack2.addSlice(label,mask);
 		}
+		stack2.setColorModel(LookUpTable.createGrayscaleColorModel(false));
 		imp.setStack(stack2);
 		imp.setSlice(currslice);
 		imp.setCalibration(imp.getCalibration());
