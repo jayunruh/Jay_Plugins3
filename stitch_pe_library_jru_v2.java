@@ -39,7 +39,11 @@ public class stitch_pe_library_jru_v2 implements PlugIn,gui_interface {
 			if(pos<0){
 				parentnames[i]="";
 			}else{
-				parentnames[i]=names[i].substring(0,pos-1);
+				if(pos==0){
+					parentnames[i]="unnamed";
+				} else {
+					parentnames[i]=names[i].substring(0,pos-1);
+				}
 				int pos2=names[i].indexOf(")",pos+8);
 				String temp=names[i].substring(pos+10,pos2);
 				tilenum[i]=Integer.parseInt(temp);
@@ -49,7 +53,7 @@ public class stitch_pe_library_jru_v2 implements PlugIn,gui_interface {
 			IJ.log(parentnames[i]+" , "+tilenum[i]+" , "+icoords[0][i]+" , "+icoords[1][i]);
 		}
 		//now get the unique names
-		Object[] temptilenames=getUniqueNames(parentnames);
+		Object[] temptilenames=getUniqueNames(parentnames,tilenum);
 		String[] tilenames=(String[])temptilenames[0];
 		String[] disptilenames=(String[])temptilenames[2];
 		GenericDialog gd=new GenericDialog("Options");
@@ -96,18 +100,14 @@ public class stitch_pe_library_jru_v2 implements PlugIn,gui_interface {
 		//if(scandiroption==1){xstart=ximgs-1; xscandir=-1; ystart=0; yscandir=1;}
 		//if(scandiroption==3){xstart=ximgs-1; xscandir=-1;}
 		//now that we have the parent name, make our series list
-		int[] selseries=new int[names.length];
-		int[] seltilenum=new int[names.length];
-		int ntiles=0;
-		for(int i=0;i<names.length;i++){
-			if(parentnames[i].equals(tilenames[selindex])){
-				selseries[ntiles]=i;
-				seltilenum[ntiles]=tilenum[i];
-				ntiles++;
-			}
+		int ntiles=((int[])temptilenames[1])[selindex];
+		int[] selseries=new int[ntiles];
+		int[] seltilenum=new int[ntiles];
+		int start=((int[])temptilenames[3])[selindex];
+		for(int i=0;i<ntiles;i++){
+			selseries[i]=start+i;
+			seltilenum[i]=tilenum[i];
 		}
-		selseries=trunc_array(selseries,ntiles);
-		seltilenum=trunc_array(seltilenum,ntiles);
 		int[] order=jsort.get_javasort_order(seltilenum);
 		
 		float[][] coords=new float[2][ntiles];
@@ -343,6 +343,47 @@ public class stitch_pe_library_jru_v2 implements PlugIn,gui_interface {
 			temp2[i]=temp[i]+" ("+tempcounts[i]+" tiles)";
 		}
 		return new Object[]{temp,tempcounts,temp2};
+	}
+
+	public static Object[] getUniqueNames(String[] list1,int[] id){
+		//find the unique names: assume an ordered list
+		//if multiple names with the id, 1, repeat them
+		//non-tile names are null
+		//start by finding the first non-null name
+		int pos=0;
+		while(list1[pos].length()==0 && pos<list1.length){
+			pos++;
+		}
+		List<String> namelist=new ArrayList<String>();
+		int[] counts=new int[list1.length];
+		int[] starts=new int[list1.length];
+		String currname=list1[pos];
+		namelist.add(currname);
+		int nnames=0;
+		counts[nnames]=1;
+		starts[nnames]=pos;
+		for(int i=pos+1;i<list1.length;i++){
+			if(list1[i].equals(currname) && id[i]!=1){
+				counts[nnames]++;
+			} else {
+				nnames++;
+				currname=list1[i];
+				namelist.add(currname);
+				counts[nnames]=1;
+				starts[nnames]=i;
+			}
+		}
+		String[] temp=new String[nnames];
+		int[] tempcounts=new int[nnames];
+		int[] tempstarts=new int[nnames];
+		String[] temp2=new String[nnames];
+		for(int i=0;i<nnames;i++){
+			temp[i]=namelist.get(i);
+			tempcounts[i]=counts[i];
+			temp2[i]=temp[i]+" ("+tempcounts[i]+" tiles)";
+			tempstarts[i]=starts[i];
+		}
+		return new Object[]{temp,tempcounts,temp2,tempstarts};
 	}
 
 	public void showMessage(String message){ IJ.showMessage(message);}

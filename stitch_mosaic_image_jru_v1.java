@@ -23,7 +23,11 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 		ImagePlus imp=WindowManager.getCurrentImage();
 		ImageWindow[] iws=jutils.selectPlots(false,1,new String[]{"Position_Plot"});
 		if(iws==null) return;
-		Object[] retvals=exec(imp,iws[0]);
+		GenericDialog gd=new GenericDialog("Options");
+		gd.addCheckbox("Ignore_scaling",false);
+		gd.showDialog(); if(gd.wasCanceled()) return;
+		boolean ignorescale=gd.getNextBoolean();
+		Object[] retvals=exec(imp,iws[0],ignorescale);
 		ImagePlus retimp=(ImagePlus)retvals[0];
 		if(imp.getNChannels()==1) retimp.show();
 		else{
@@ -31,38 +35,40 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 		}
 	}
 
-	public static float[] getAvgOverlap(float[][] coords,int width,int height){
+	public static float[] getAvgOverlap(float[][] coords,float width,float height){
 		float hover=0.0f; int nhpairs=0;
 		float vover=0.0f; int nvpairs=0;
-		float halfwidth=0.5f*(float)width;
-		float halfheight=0.5f*(float)height;
+		float halfwidth=0.5f*width;
+		float halfheight=0.5f*height;
 		for(int i=0;i<coords[0].length;i++){
 			for(int j=(i+1);j<coords[0].length;j++){
 				float xdist=Math.abs(coords[0][j]-coords[0][i]);
 				float ydist=Math.abs(coords[1][j]-coords[1][i]);
-				if(xdist>halfwidth && xdist<(float)width && ydist<halfheight){
+				if(xdist>halfwidth && xdist<width && ydist<halfheight){
 					hover+=xdist; nhpairs++;
 				}
-				if(xdist<halfwidth && ydist>halfheight && ydist<(float)height){
+				if(xdist<halfwidth && ydist>halfheight && ydist<height){
 					vover+=ydist; nvpairs++;
 				}
 			}
 		}
 		hover/=(float)nhpairs;
 		vover/=(float)nvpairs;
-		return new float[]{(float)width-hover,(float)height-vover};
+		return new float[]{width-hover,height-vover};
 	}
 
-	public Object[] exec(ImagePlus imp,ImageWindow iw){
+	public Object[] exec(ImagePlus imp,ImageWindow iw,boolean ignorescale){
 		float[][] xvals=(float[][])jutils.runPW4VoidMethod(iw,"getXValues");
 		float[][] yvals=(float[][])jutils.runPW4VoidMethod(iw,"getYValues");
 		int sel=(Integer)jutils.runPW4VoidMethod(iw,"getSelected"); if(sel<0) sel=0;
-		float[] overlap=getAvgOverlap(new float[][]{xvals[sel],yvals[sel]},imp.getWidth(),imp.getHeight());
+		float psize=(float)jutils.get_psize(imp);
+		if(ignorescale) psize=1.0f;
+		float[] overlap=getAvgOverlap(new float[][]{xvals[sel],yvals[sel]},(float)imp.getWidth()*psize,(float)imp.getHeight()*psize);
 		IJ.log("avg overlap = "+overlap[0]+" , "+overlap[1]);
-		return exec(imp,xvals[sel],yvals[sel],overlap[0],overlap[1]);
+		return exec(imp,xvals[sel],yvals[sel],overlap[0],overlap[1],psize);
 	}
 
-	public Object[] exec(ImagePlus imp,float[] xvals,float[] yvals,float hoverlap,float voverlap){
+	public Object[] exec(ImagePlus imp,float[] xvals,float[] yvals,float hoverlap,float voverlap,float psize){
 		int width=imp.getWidth(); int height=imp.getHeight();
 		ImageStack stack=imp.getStack();
 		int size=stack.getSize();
@@ -77,7 +83,6 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 			trueframes=(int)(frames/xvals.length);
 			frames=xvals.length;
 		}
-		float psize=(float)jutils.get_psize(imp);
 		int typeindex=algutils.get_array_type(stack.getPixels(1));
 		stitching sclass=new stitching(width,height,xvals,yvals,psize,typeindex,this);
 		ImageStack stack2=new ImageStack(sclass.newwidth,sclass.newheight);
