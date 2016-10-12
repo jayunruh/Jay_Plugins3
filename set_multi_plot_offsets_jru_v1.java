@@ -32,6 +32,7 @@ public class set_multi_plot_offsets_jru_v1 implements PlugIn {
 			}
 		}
 		jutils.runPW4VoidMethod(iw,"updatePlot");
+		jutils.runPW4VoidMethod(iw,"xautoscale");
 	}
 
 }
