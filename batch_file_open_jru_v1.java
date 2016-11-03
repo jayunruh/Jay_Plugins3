@@ -8,13 +8,14 @@
 import ij.*;
 import ij.process.*;
 import ij.gui.*;
-import java.awt.*;
+import java.awt.Frame;
 import ij.plugin.*;
 import ij.plugin.frame.*;
 import ij.io.*;
 import jguis.*;
 import jalgs.*;
 import java.io.*;
+import java.util.*;
 
 public class batch_file_open_jru_v1 implements PlugIn {
 	String directory,extension;
@@ -70,14 +71,21 @@ public class batch_file_open_jru_v1 implements PlugIn {
 		//IJ.showMessage("test");
 		Opener opener=new Opener(); //opener.setSilentMode(true);
 		for(int i=0;i<flist.length;i++){
-			ImagePlus currimp=null;
-			if(!extension.equals("lsm")){
-				if(ijopen) currimp=opener.openImage(directory+flist[i]);
-				else currimp=(new LOCI_file_reader()).get_loci_imp(directory,flist[i]);
+			if(extension.equals("xls")){
+				List<List<String>> table=table_tools.getTableFromFile(new File(directory+flist[i]),"\t",false);
+				String[] headings=table_tools.list2stringarray(table.get(0));
+				table.remove(0);
+				table_tools.create_table(flist[i],table,headings);
 			} else {
-				currimp=(new LSM_file_reader()).open(directory,flist[i]);
+				ImagePlus currimp=null;
+				if(!extension.equals("lsm")){
+					if(ijopen) currimp=opener.openImage(directory+flist[i]);
+					else currimp=(new LOCI_file_reader()).get_loci_imp(directory,flist[i]);
+				} else {
+					currimp=(new LSM_file_reader()).open(directory,flist[i]);
+				}
+				if(currimp!=null) currimp.show();
 			}
-			if(currimp!=null) currimp.show();
 			if(IJ.escapePressed()) break;
 		}
 	}
