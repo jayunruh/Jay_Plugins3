@@ -20,16 +20,19 @@ public class stitch_mosaic_image_jru_v1 implements PlugIn, FrameInterface, gui_i
 	ImageStack tempstack;
 
 	public void run(String arg) {
-		ImagePlus imp=WindowManager.getCurrentImage();
+		/*ImagePlus imp=WindowManager.getCurrentImage();
 		ImageWindow[] iws=jutils.selectPlots(false,1,new String[]{"Position_Plot"});
-		if(iws==null) return;
+		if(iws==null) return;*/
+		ImagePlus[] imps=jutils.selectImages(false,2,new String[]{"Mosaic_Stack","Position_Plot"});
+		if(imps==null) return;
+		ImageWindow iw=imps[1].getWindow();
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addCheckbox("Ignore_scaling",false);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		boolean ignorescale=gd.getNextBoolean();
-		Object[] retvals=exec(imp,iws[0],ignorescale);
+		Object[] retvals=exec(imps[0],iw,ignorescale);
 		ImagePlus retimp=(ImagePlus)retvals[0];
-		if(imp.getNChannels()==1) retimp.show();
+		if(imps[0].getNChannels()==1) retimp.show();
 		else{
 			(new CompositeImage(retimp,CompositeImage.COLOR)).show();
 		}

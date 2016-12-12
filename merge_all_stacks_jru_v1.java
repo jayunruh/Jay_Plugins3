@@ -11,6 +11,7 @@ import ij.gui.*;
 import java.awt.*;
 import ij.plugin.*;
 import jalgs.*;
+import jguis.*;
 
 public class merge_all_stacks_jru_v1 implements PlugIn {
 
@@ -28,6 +29,7 @@ public class merge_all_stacks_jru_v1 implements PlugIn {
 		//int[] slices=new int[wList.length];
 		int maxwidth=0;
 		int maxheight=0;
+		float psize=(float)jutils.get_psize(imp);
 		//int maxchans=0;
 		//int maxslices=0;
 		for(int i=0;i<wList.length;i++){
@@ -70,6 +72,7 @@ public class merge_all_stacks_jru_v1 implements PlugIn {
 		ImagePlus imp3=new ImagePlus("Merged Stacks",newstack);
 		imp3.setOpenAsHyperStack(true);
 		imp3.setDimensions(channels,slices,nframes);
+		jutils.set_psize(imp3,(double)psize);
 		if(channels>1) new CompositeImage(imp3,CompositeImage.COLOR).show();
 		else imp3.show();
 	}
