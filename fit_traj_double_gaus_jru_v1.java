@@ -77,7 +77,7 @@ public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 
 		double stdevstart=minstdev;
 		double stdevend=maxstdev;
 		double[][] constraints=new double[2][7];
-		constraints[0][0]=params[0]-0.5*params[1]; constraints[1][0]=params[0]+0.5*params[1];
+		constraints[0][0]=params[0]-params[1]; constraints[1][0]=params[0]+params[1];
 		constraints[0][1]=0.0; constraints[1][1]=10.0*params[1];
 		constraints[0][2]=0.2; constraints[1][2]=5.0;
 		constraints[0][3]=xcstart; constraints[1][3]=xcend;
