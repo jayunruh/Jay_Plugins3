@@ -15,6 +15,7 @@ import ij.plugin.*;
 import ij.measure.*;
 import java.io.*;
 import jguis.*;
+import jalgs.*;
 
 public class histogram_2D_spectral_phasor_jru_v1 implements PlugIn {
 
@@ -22,6 +23,13 @@ public class histogram_2D_spectral_phasor_jru_v1 implements PlugIn {
 		ImagePlus imp=WindowManager.getCurrentImage();
 		int nchans=imp.getNChannels();
 		ImagePlus[] imps=stack2gsi(imp.getStack(),nchans,1);
+		//double[][] matrix={{0.14,-0.01,-0.02},{0.32,0.12,0.30},{1.0,1.0,1.0}};
+		//float[] xpts={0.14f,-0.01f,-0.02f};
+		//float[] ypts={0.32f,0.12f,0.30f};
+		//double[][] minv=(new matrixsolve()).gjinv2(matrix,3);
+		//IJ.log(table_tools.print_double_array(minv));
+		//boolean inside=PU.contains(0.012f,0.22f,xpts,ypts);
+		//IJ.log(""+inside);
 		final Hist2DWindow cw=new Hist2DWindow();
 		cw.init(imps[0],imps[1],null,imp,imps[2],4);
 		Hist2DWindow.launch_frame("Interactive 2D Histogram",cw);

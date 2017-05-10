@@ -44,6 +44,11 @@ public class flowsight_custom_converter_jru_v1 implements PlugIn {
 			labels+="\tbudch"+(i+1);
 		}
 		labels+="\tbudfretratio";
+		labels+="\tmotherarea";
+		for(int i=0;i<nch;i++){
+			labels+="\tmotherch"+(i+1);
+		}
+		labels+="\tmotherfretratio";
 		float[][] limits=null;
 		StringBuffer sb=new StringBuffer();
 		float[] budaspectlims={0.58f,0.8f};
@@ -118,23 +123,35 @@ public class flowsight_custom_converter_jru_v1 implements PlugIn {
 		Polygon outline=fb.get_object_outline(object,1);
 		float[] grmsd=gradRMSD(stack[transch],outline,width,height); //5 params with area first
 		float[] ellipse=ellipseParams(outline); //6 parameters with circ last
-		float[] params=(float[])algutils.combine_arrays(grmsd,ellipse);
+		float[] params=(float[])algutils.combine_arrays(grmsd,ellipse); //this now has 11 parameters
 		float[] backs=new float[stack.length];
 		for(int i=0;i<stack.length;i++) backs[i]=fb.get_object_stats(back,1,stack[i],"Avg");
 		float maskarea=fb.get_object_stats(object,1,stack[0],"Count");
 		int offset=params.length;
-		float[] temp=(float[])algutils.expand_array(params,offset+stack.length+1);
+		float[] temp=(float[])algutils.expand_array(params,offset+stack.length+1); //now we add stack.length+1 (sums and ratio) parameters
 		for(int i=0;i<stack.length;i++){
 			float sum=fb.get_object_stats(object,1,stack[i],"Sum");
 			temp[i+offset]=sum-backs[i]*maskarea;
 		}
 		temp[offset+stack.length]=temp[offset+numch]/temp[offset+dench];
 		offset=temp.length;
-		temp=(float[])algutils.expand_array(temp,offset+stack.length+2);
+		temp=(float[])algutils.expand_array(temp,offset+stack.length+2); //add another stack.length+2 (budarea+sums+ratio) parameters
 		if(hasBud(temp,aspectlims,arealims)){
+			//calculate the bud parameters
 			float[] temp2=measureBud(stack,ellipse,object,algutils.convert_arr_float(stack[transch]),width,height,backs);
 			System.arraycopy(temp2,0,temp,offset,temp2.length);
-			temp[temp.length-1]=temp2[1+numch]/temp2[1+dench];
+			temp[offset+1+stack.length]=temp2[1+numch]/temp2[1+dench];
+			//calculate the mother parameters
+			offset=temp.length;
+			temp=(float[])algutils.expand_array(temp,offset+stack.length+2); //now add another stack.length+2 (motherarea+sums+ratio) parameters
+			temp[offset]=temp[0]-temp[11+stack.length+1]; //area-budarea
+			for(int i=0;i<stack.length;i++){
+				temp[offset+1+i]=temp[11+i]-temp[11+stack.length+2+i]; //int-budint
+			}
+			temp[offset+1+stack.length]=temp[offset+1+numch]/temp[offset+1+dench];
+		} else {
+			offset=temp.length;
+			temp=(float[])algutils.expand_array(temp,offset+stack.length+2); //now add another stack.length+2 (motherarea+sums+ratio) parameters (zeros in this case)
 		}
 		return temp;
 	}
