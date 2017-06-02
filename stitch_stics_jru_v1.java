@@ -141,6 +141,7 @@ public class stitch_stics_jru_v1 implements PlugIn, gui_interface {
 			float maxoverlap=Math.max(overlaps[0],overlaps[1]);
 			int[] fftindex=fftutils.get_best_index((int)maxoverlap,false,15); //do we pad or not?
 			int subfftdim=fftindex[1];
+			IJ.log("fft dimension = "+subfftdim);
 			float[][] cc=s.phaseCorrSTICS(pix,pairs,guessshifts,subfftdim,nthreads,"Max");
 			IJ.showStatus("finding peaks");
 			IJ.log("peak statistics: corr,phasecorr,x,y");

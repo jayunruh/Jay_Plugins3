@@ -13,6 +13,7 @@ import ij.plugin.*;
 import ij.text.*;
 import java.util.*;
 import jguis.*;
+import jalgs.*;
 import ij.plugin.frame.RoiManager;
 
 public class filter_table_spatial_rois_jru_v1 implements PlugIn {
@@ -26,14 +27,18 @@ public class filter_table_spatial_rois_jru_v1 implements PlugIn {
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addChoice("X Column",col_labels,col_labels[0]);
 		gd.addChoice("Y Column",col_labels,col_labels[1]);
-		gd.addNumericField("Max_Width",512,0);
-		gd.addNumericField("Max_Height",512,0);
+		//gd.addNumericField("Max_Width",512,0);
+		//gd.addNumericField("Max_Height",512,0);
 		gd.addCheckbox("Add_Roi_Label",false);
 		gd.showDialog(); if(gd.wasCanceled()){return;}
 		int xcol=gd.getNextChoiceIndex();
 		int ycol=gd.getNextChoiceIndex();
-		int width=(int)gd.getNextNumber();
-		int height=(int)gd.getNextNumber();
+		//int width=(int)gd.getNextNumber();
+		//int height=(int)gd.getNextNumber();
+		float[] xvals=table_tools.get_column_array(listtable,xcol);
+		float[] yvals=table_tools.get_column_array(listtable,ycol);
+		int width=1+(int)jstatistics.getstatistic("Max",xvals,null);
+		int height=1+(int)jstatistics.getstatistic("Max",yvals,null);
 		boolean addlabel=gd.getNextBoolean();
 		RoiManager rman=RoiManager.getInstance();
 		Roi[] rois=rman.getRoisAsArray();
@@ -41,9 +46,11 @@ public class filter_table_spatial_rois_jru_v1 implements PlugIn {
 		float[] mask=getMask2(rois,width,height);
 		List<List<String>> selected=new ArrayList<List<String>>();
 		for(int i=0;i<listtable.size();i++){
-			float xval=table_tools.get_number(listtable,i,xcol);
-			float yval=table_tools.get_number(listtable,i,ycol);
-			float sel=mask[(int)xval+height*(int)yval];
+			//float xval=table_tools.get_number(listtable,i,xcol);
+			//float yval=table_tools.get_number(listtable,i,ycol);
+			float xval=xvals[i];
+			float yval=yvals[i];
+			float sel=mask[(int)xval+width*(int)yval];
 			if(sel>0.0f){
 				List<String> row=listtable.get(i);
 				if(addlabel) row.add(""+(int)sel);
