@@ -138,7 +138,7 @@ public class fit_custom_ring_jru_v1 implements PlugIn, NLLSfitinterface_v2 {
 		//now set the constraints
 		double[][] constraints=new double[2][17];
 		constraints[0][0]=-max;  constraints[1][0]=max;
-		constraints[0][1]=0.25*(double)maxd; constraints[1][1]=1.0*(double)maxd;
+		constraints[0][1]=0.25*(double)maxd; constraints[1][1]=1.5*(double)maxd;
 		constraints[0][2]=-0.2*params[1]; constraints[1][2]=0.2*params[1];
 		constraints[0][3]=-0.2*params[1]; constraints[1][3]=0.2*params[1];
 		constraints[0][4]=params[4]-zratio; constraints[1][4]=params[4]+zratio;

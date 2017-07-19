@@ -35,6 +35,7 @@ public class object_measure_jru_v1 implements PlugIn {
 		gd2.addNumericField("Circ_Radius",4,0);
 		gd2.addCheckbox("Add_To_Roi_Manager",false);
 		gd2.addCheckbox("Add_Area",false);
+		gd2.addCheckbox("Add_Slice_Label",false);
 		gd2.showDialog(); if(gd2.wasCanceled()){return;}
 		int index1=gd2.getNextChoiceIndex();
 		int index2=gd2.getNextChoiceIndex();
@@ -46,6 +47,7 @@ public class object_measure_jru_v1 implements PlugIn {
 		int circrad=(int)gd2.getNextNumber();
 		boolean addroi=gd2.getNextBoolean();
 		boolean addarea=gd2.getNextBoolean();
+		boolean addlabel=gd2.getNextBoolean();
 
 		ImageStack measstack=imp2.getStack();
 		int width=imp2.getWidth(); int height=imp2.getHeight(); int slices=measstack.getSize();
@@ -99,11 +101,13 @@ public class object_measure_jru_v1 implements PlugIn {
 					if(circ) circvals[k][j-1]=fb.get_object_stats(circobj,j,measpixels[k],circlims[j-1],stat);
 				}
 			}
+			String label=measstack.getSliceLabel(i+1);
 			for(int j=1;j<=fb.nobjects;j++){
 				sb.append(""+(i/nchans+1)+"\t"+j);
 				for(int k=0;k<nchans;k++) sb.append("\t"+statvals[k][j-1]);
 				if(circ){for(int k=0;k<nchans;k++){sb.append("\t"+circvals[k][j-1]);}}
 				if(addarea){sb.append("\t"+areas[j-1]);}
+				if(addlabel){sb.append("\t"+label);}
 				sb.append("\n");
 			}
 		}
@@ -114,6 +118,7 @@ public class object_measure_jru_v1 implements PlugIn {
 			for(int i=0;i<nchans;i++) headings+="\tCirc"+(i+1);
 		}
 		if(addarea) headings+="\tarea";
+		if(addlabel) headings+="\tlabel";
 		new TextWindow("Object Measurements",headings,sb.toString(),400,200);
 		if(imp1!=null && addroi){
 			float[] objects=(float[])objstack.getPixels(1);

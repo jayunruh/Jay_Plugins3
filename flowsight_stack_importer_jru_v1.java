@@ -50,6 +50,7 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 		if(imp1.getWidth()>maxdim) maxdim=imp1.getWidth();
 		gd.addNumericField("Max_Image_Dimension",maxdim,0);
 		gd.addCheckbox("Dont_Import_Images",false);
+		gd.addNumericField("Max Images (0 for all)",0,0);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		int maskch=(int)gd.getNextNumber()-1;
 		int transch=(int)gd.getNextNumber()-1;
@@ -61,6 +62,8 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 		float padval=(float)gd.getNextNumber();
 		maxdim=(int)gd.getNextNumber();
 		boolean noimages=gd.getNextBoolean();
+		int maximgs=(int)gd.getNextNumber();
+		if(maximgs==0) maximgs=lsr.nseries/2;
 
 		ImageStack outstack=new ImageStack(maxdim,maxdim);
 
@@ -68,7 +71,7 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 		int counter=0;
 		sb.append(""+(counter+1)+"\t"+table_tools.print_float_array((float[])temp[0])+"\n");
 		if(!noimages) for(int j=0;j<=selchan.length;j++) outstack.addSlice("",((float[][])temp[1])[j]);
-		for(int i=1;i<lsr.nseries/2;i++){
+		for(int i=1;i<maximgs;i++){
 			imp1=(ImagePlus)lsr.getNextFrame();
 			imp2=(ImagePlus)lsr.getNextFrame();
 			if(i%500==0){
