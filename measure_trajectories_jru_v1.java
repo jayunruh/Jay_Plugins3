@@ -27,6 +27,7 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 		gd.addCheckbox("Measure_Circ?",false);
 		gd.addNumericField("Circ_Radius",1.0,5,15,null);
 		gd.addChoice("Circ_Stat",jstatistics.stats,"Min");
+		gd.addCheckbox("Output_Objects?",false);
 		gd.showDialog(); if(gd.wasCanceled()){return;}
 		String stat=jstatistics.stats[gd.getNextChoiceIndex()];
 		float rad=(float)gd.getNextNumber();
@@ -35,6 +36,7 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 		boolean circmeas=gd.getNextBoolean();
 		float circrad=(float)gd.getNextNumber();
 		String circstat=jstatistics.stats[gd.getNextChoiceIndex()];
+		boolean outobj=gd.getNextBoolean();
 		ImageWindow iw=imps[1].getWindow();
 		float[][] xvals=(float[][])jutils.runPW4VoidMethod(iw,"getXValues");
 		float[][] yvals=(float[][])jutils.runPW4VoidMethod(iw,"getYValues");
@@ -63,6 +65,11 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 			int temp=stats[0].length;
 			stats=new float[totlength][temp+1];
 		}
+		float[][] objstack=null;
+		if(outobj){
+			if(threed) objstack=new float[frames*slices][width*height];
+			else objstack=new float[frames][width*height];
+		}
 		int counter=0;
 		float circzrad=(zrad/rad)*(rad+circrad);
 		//stats are id,start,frame,x,y,(z),stat
@@ -80,10 +87,15 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 					Object[] frame=jutils.get3DZSeries(stack,currchan-1,tpos,frames,slices,channels);
 					circ=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
 					if(circmeas) circ2=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,rad+circrad,circzrad);
+					if(outobj){
+						Object[] tempobjstack=algutils.get3DZSeries(objstack,tpos,currchan-1,frames,slices,channels);
+						setSphereObj(tempobjstack,(float)(i+1),width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
+					}
 				} else { 
 					Object frame=jutils.get3DSlice(stack,tpos,0,currchan-1,frames,slices,channels);
 					circ=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad);
 					if(circmeas) circ2=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad,rad+circrad);
+					if(outobj) setCircleObj((float[])objstack[tpos],(float)(i+1),width,height,xvals[i][j-start],yvals[i][j-start],rad);
 				}
 				stats[counter][0]=i;
 				stats[counter][1]=start;
@@ -108,6 +120,31 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 			if(threed) table_tools.create_table("Traj Stats",stats,new String[]{"id","start","frame","x","y","z",stat,"circ_"+circstat});
 			else table_tools.create_table("Traj Stats",stats,new String[]{"id","start","frame","x","y",stat,"circ_"+circstat});
 		}
+		//and the object image if required
+		if(outobj){
+			new ImagePlus("Objects",jutils.array2stack(objstack,width,height)).show();
+		}
+	}
+
+	public void setCircleObj(float[] image,float objval,int width,int height,float xc,float yc,float rad){
+		setCircleObj(image,objval,width,height,xc,yc,0.0f,rad);
+	}
+
+	public void setCircleObj(float[] image,float objval,int width,int height,float xc,float yc,float rad1,float rad2){
+		int size=(int)(2.0f*rad2+1.0f);
+		float[] square=new float[size*size];
+		int startx=(int)(xc-rad2);
+		int starty=(int)(yc-rad2);
+		for(int i=starty;i<(starty+size);i++){
+			float y=yc-(float)i;
+			for(int j=startx;j<(startx+size);j++){
+				float x=xc-(float)j;
+				float dist2=(float)Math.sqrt(x*x+y*y);
+				if(dist2<=rad2 && dist2>=rad1 && i>=0 && i<height && j>=0 && j<width){
+					if(image[j+i*width]<=0.0f) image[j+i*width]=objval;
+				}
+			}
+		}
 	}
 
 	public float[] getCircleVals(Object image,int width,int height,float xc,float yc,float rad){
@@ -124,7 +161,7 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 			float y=yc-(float)i;
 			for(int j=startx;j<(startx+size);j++){
 				float x=xc-(float)j;
-				float dist2=x*x+y*y;
+				float dist2=(float)Math.sqrt(x*x+y*y);
 				if(dist2<=rad2 && dist2>=rad1 && i>=0 && i<height && j>=0 && j<width){
 					int pos=j+i*width;
 					Object temp=image;
@@ -138,12 +175,50 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 		return (float[])algutils.get_subarray(square,0,counter);		
 	}
 
+	public void setSphereObj(Object[] stack,float objval,int width,int height,float xc,float yc,float zc,float rad,float zrad){
+		setSphereObj(stack,objval,width,height,xc,yc,zc,0.0f,rad,zrad);
+	}
+
+	public void setSphereObj(Object[] stack,float objval,int width,int height,float xc,float yc,float zc,float rad1,float rad2,float zrad2){
+		//this puts the object number in the sphere if there is not already something there
+		if(rad2==0.0f && zrad2==0.0f){ //0 radius, place a point
+			int zpos=(int)(zc+0.5f); if(zpos<0) zpos=0; if(zpos>=stack.length) zpos=stack.length-1;
+			int xpos=(int)(xc+0.5f); if(xpos<0) xpos=0; if(xpos>=width) zpos=width-1;
+			int ypos=(int)(yc+0.5f); if(ypos<0) ypos=0; if(ypos>=height) ypos=height-1;
+			if(((float[])stack[zpos])[xpos+ypos*width]<=0.0f) ((float[])stack[zpos])[xpos+ypos*width]=objval;
+			return;
+		}
+		int size=(int)(2.0f*rad2+1.0f);
+		int zsize=(int)(2.0f*zrad2+1.0f);
+		int slices=stack.length;
+		float[] square=new float[size*size*zsize];
+		int startx=(int)(xc-rad2);
+		int starty=(int)(yc-rad2);
+		int startz=(int)(zc-zrad2);
+		float zratio=zrad2/rad2;
+		for(int i=starty;i<(starty+size);i++){
+			float y=yc-(float)i;
+			for(int j=startx;j<(startx+size);j++){
+				float x=xc-(float)j;
+				for(int k=startz;k<(startz+zsize);k++){
+					float z=zc-(float)k;
+					float dist2=(float)Math.sqrt(x*x+y*y+z*z/(zratio*zratio));
+					if(dist2<=rad2 && dist2>=rad1 && i>=0 && i<height && j>=0 && j<width && k>=0 && k<slices){
+						if(((float[])stack[k])[j+i*width]<=0.0f) ((float[])stack[k])[j+i*width]=objval;
+					}
+				}
+			}
+		}
+	}
+
+	//gets the intensity values in a sphere of xy radius rad and z radius zrad
 	public float[] getSphereVals(Object[] image,int width,int height,float xc,float yc,float zc,float rad,float zrad){
 		return getSphereVals(image,width,height,xc,yc,zc,0.0f,rad,zrad);	
 	}
 
+	//gets the intensity values in a sphere or shell between rad1 and rad2
 	public float[] getSphereVals(Object[] image,int width,int height,float xc,float yc,float zc,float rad1,float rad2,float zrad2){
-		if(rad2==0.0f && zrad2==0.0f){
+		if(rad2==0.0f && zrad2==0.0f){ //0 radius, return a value
 			float temp=interpolation.interp3D(image,width,height,xc,yc,zc);
 			return new float[]{temp};
 		}
@@ -162,7 +237,7 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 				float x=xc-(float)j;
 				for(int k=startz;k<(startz+zsize);k++){
 					float z=zc-(float)k;
-					float dist2=x*x+y*y+z*z/(zratio*zratio);
+					float dist2=(float)Math.sqrt(x*x+y*y+z*z/(zratio*zratio));
 					if(dist2<=rad2 && dist2>=rad1 && i>=0 && i<height && j>=0 && j<width && k>=0 && k<slices){
 						Object temp=image[k];
 						int pos=j+i*width;
