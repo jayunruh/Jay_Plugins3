@@ -31,7 +31,11 @@ public class object_measure_3D_jru_v1 implements PlugIn, gui_interface {
 		ImageStack objstack=imps[0].getStack();
 		Object[] objpix=jutils.stack2array(objstack);
 		ImageStack measstack=imps[1].getStack();
-		Object[] measpix=jutils.stack2array(measstack);
+		int measchans=imps[1].getNChannels();
+		int measslices=imps[1].getNSlices();
+		int measframes=imps[1].getNFrames();
+		Object[][] measpix=new Object[measchans][];
+		for(int i=0;i<measchans;i++) measpix[i]=jutils.get3DZSeries(measstack,i,0,measframes,measslices,measchans);
 		findblobs3D fb=new findblobs3D(imps[0].getWidth(),imps[0].getHeight(),objstack.getSize(),this);
 		float[][] objects=null;
 		if(!indexed) objects=fb.dofindblobs(objpix);
@@ -41,13 +45,15 @@ public class object_measure_3D_jru_v1 implements PlugIn, gui_interface {
 			fb.set_objects(objects);
 		}
 		float[][] centareas=null;
-		float[] stats=null;
+		float[][] stats=null;
 		if(stat.equals("Avg") || stat.equals("Sum")){
 			centareas=fb.getCentroidsAreasAvgs(objects,measpix);
-			stats=new float[fb.nobjects];
-			for(int i=0;i<stats.length;i++){
-				stats[i]=centareas[i][4];
-				if(stat.equals("Sum")) stats[i]*=centareas[i][3];
+			stats=new float[measchans][fb.nobjects];
+			for(int i=0;i<stats[0].length;i++){
+				for(int j=0;j<stats.length;j++){
+					stats[j][i]=centareas[i][j+4];
+					if(stat.equals("Sum")) stats[j][i]*=centareas[i][3];
+				}
 			}
 		} else {
 			if(outcentarea) centareas=fb.getCentroidsAreas(objects);
@@ -56,12 +62,13 @@ public class object_measure_3D_jru_v1 implements PlugIn, gui_interface {
 		}
 		String headings="object";
 		if(outcentarea) headings+="\tx\ty\tz\tarea";
-		headings+="\t"+stat;
+		for(int i=0;i<measchans;i++) headings+="\t"+stat+(i+1);
 		StringBuffer sb=new StringBuffer();
 		for(int i=0;i<fb.nobjects;i++){
 			sb.append(""+i);
 			if(outcentarea) sb.append("\t"+centareas[i][0]+"\t"+centareas[i][1]+"\t"+centareas[i][2]+"\t"+centareas[i][3]);
-			sb.append("\t"+stats[i]+"\n");
+			for(int j=0;j<measchans;j++) sb.append("\t"+stats[j][i]);
+			sb.append("\n");
 		}
 		new TextWindow("Object Measurements",headings,sb.toString(),400,200);
 	}

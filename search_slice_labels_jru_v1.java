@@ -22,9 +22,25 @@ public class search_slice_labels_jru_v1 implements PlugIn {
 	public void run(String arg) {
 		ImagePlus imp=WindowManager.getCurrentImage();
 		GenericDialog gd=new GenericDialog("Name List");
+		gd.addCheckbox("Use_Table_Column",false);
 		gd.addTextAreas("",null,10,20);
 		gd.showDialog(); if(gd.wasCanceled()){return;}
+		boolean usetable=gd.getNextBoolean();
 		String input=gd.getNextText();
+		if(usetable){
+			TextWindow[] tw=jutils.selectTables(false,1);
+			if(tw!=null && tw[0]!=null){
+				TextPanel tp=tw[0].getTextPanel();
+				String[] col_labels=table_tools.getcollabels(tp);
+				GenericDialog gd2=new GenericDialog("options");
+				gd2.addChoice("Search_Column",col_labels,col_labels[0]);
+				gd2.showDialog(); if(gd2.wasCanceled()) return;
+				int colindex=gd2.getNextChoiceIndex();
+				List<List<String>> listtable=table_tools.table2listtable(tp);
+				String[] colvals=table_tools.get_listtable_column(listtable,colindex);
+				input=table_tools.print_string_array(colvals,3);
+			}
+		}
 		int nchan=imp.getNChannels();
 		int nslices=imp.getNSlices();
 		ImageStack stack=imp.getStack();

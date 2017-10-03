@@ -20,7 +20,9 @@ import java.io.*;
 
 public class custom_yeast_nuclear_table_jru_v5 implements PlugIn {
 	//this plugin custom analyzes Jaspersen lab nuclear volume measurement data
-	//this version starts with a single (image avg) table with 0plate,1row (letter), 2col, 3image, 4cell_number, 5pus1, 6nucleus, 7nucleoplasm (center), 8cyto (circ), 9nuc/cyto, 10nuc/center, 11nuc/pus1
+	//this version starts (used to) with a single (image avg) table with 0plate,1row (letter), 2col, 3image, 4cell_number, 5pus1, 6nucleus, 7nucleoplasm (center), 8cyto (circ), 9nuc/cyto, 10nuc/center, 11nuc/pus1
+	//actually now have 0plate, 1image, 2cell_number, 3pus1, 4nucleus, 5nucleoplasm (center), 6cyto (circ), 7nuc/cyto, 8nuc/center, 9nuc/pus1
+	//the image contains "WellA01_" at the beginning
 	//need to average all images together (when n>count threshold) and get sem values (where appropriate)
 	//then measure mutant ratios and propagate errors for those
 	//v5 has wt in the leftmost column with mutants in all other columns
@@ -37,8 +39,14 @@ public class custom_yeast_nuclear_table_jru_v5 implements PlugIn {
 
 		List<List<String>> temp=table_tools.table2listtable(tw[0].getTextPanel());
 		//start by adding a unique id to end of each table row (image average)--will be the 12th row
+		//also massage the table to the previous format
 		for(int i=0;i<temp.size();i++){
 			List<String> row=temp.get(i);
+			String imname=row.get(1);
+			String rowlet=imname.substring(4,5);
+			String coltext=imname.substring(5,7);
+			row.add(1,rowlet);
+			row.add(2,coltext);
 			String id=row.get(0)+"_"+row.get(1)+row.get(2);
 			row.add(id);
 		}

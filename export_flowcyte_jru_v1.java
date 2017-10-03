@@ -34,7 +34,8 @@ public class export_flowcyte_jru_v1 implements PlugIn {
 		List<List<String>> listtable=table_tools.table2listtable(tp);
 		String[] labels=table_tools.getcollabels(tp);
 		labels=table_tools.make_labels_unique(labels);
-		int nch=labels.length;
+		(new export_flowcyte()).write_table(listtable,labels,dir,fname);
+		/*int nch=labels.length;
 		int npts=listtable.size();
 		float[][] data=new float[npts][];
 		for(int i=0;i<npts;i++){
@@ -60,7 +61,7 @@ public class export_flowcyte_jru_v1 implements PlugIn {
 			os.close();
 		} catch(IOException e){
 			IJ.log(e.getMessage());
-		}
+		}*/
 	}
 
 	private int[] get_ranges(float[][] data,int nch){

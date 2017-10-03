@@ -121,9 +121,15 @@ public class object_measure_jru_v1 implements PlugIn {
 		if(addlabel) headings+="\tlabel";
 		new TextWindow("Object Measurements",headings,sb.toString(),400,200);
 		if(imp1!=null && addroi){
-			float[] objects=(float[])objstack.getPixels(1);
+			Object tempobj=objstack.getPixels(1);
+			float[] objects=null;
 			findblobs3 fb=new findblobs3(width,height);
-			fb.set_objects(objects);
+			if(tempobj instanceof float[]){
+				objects=(float[])tempobj;
+				fb.set_objects(objects);
+			} else {
+				objects=fb.dofindblobs((byte[])tempobj);
+			}
 			Polygon[] polys2=fb.get_object_outlines(objects);
 			RoiManager rman=RoiManager.getInstance();
 			if(rman==null) rman=new RoiManager();

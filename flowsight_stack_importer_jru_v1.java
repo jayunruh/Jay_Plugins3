@@ -51,6 +51,7 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 		gd.addNumericField("Max_Image_Dimension",maxdim,0);
 		gd.addCheckbox("Dont_Import_Images",false);
 		gd.addNumericField("Max Images (0 for all)",0,0);
+		gd.addCheckbox("Show_Mask (last channel)",false);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		int maskch=(int)gd.getNextNumber()-1;
 		int transch=(int)gd.getNextNumber()-1;
@@ -64,13 +65,16 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 		boolean noimages=gd.getNextBoolean();
 		int maximgs=(int)gd.getNextNumber();
 		if(maximgs==0) maximgs=lsr.nseries/2;
+		boolean showmask=gd.getNextBoolean();
+		int showchan=selchan.length;
+		if(showmask) showchan+=1;
 
 		ImageStack outstack=new ImageStack(maxdim,maxdim);
 
 		Object[] temp=analyzeImage(imp1,imp2,maskch,transch,selchan,backsub,padval,maxdim,noimages);
 		int counter=0;
 		sb.append(""+(counter+1)+"\t"+table_tools.print_float_array((float[])temp[0])+"\n");
-		if(!noimages) for(int j=0;j<=selchan.length;j++) outstack.addSlice("",((float[][])temp[1])[j]);
+		if(!noimages) for(int j=0;j<showchan;j++) outstack.addSlice("",((float[][])temp[1])[j]);
 		for(int i=1;i<maximgs;i++){
 			imp1=(ImagePlus)lsr.getNextFrame();
 			imp2=(ImagePlus)lsr.getNextFrame();
@@ -81,7 +85,7 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 			temp=analyzeImage(imp1,imp2,maskch,transch,selchan,backsub,padval,maxdim,noimages);
 			counter++;
 			sb.append(""+(counter+1)+"\t"+table_tools.print_float_array((float[])temp[0])+"\n");
-			if(!noimages) for(int j=0;j<=selchan.length;j++) outstack.addSlice("",((float[][])temp[1])[j]);
+			if(!noimages) for(int j=0;j<showchan;j++) outstack.addSlice("",((float[][])temp[1])[j]);
 			IJ.showProgress(i,lsr.nseries/2);
 			if(IJ.escapePressed()) break;
 		}
@@ -90,7 +94,7 @@ public class flowsight_stack_importer_jru_v1 implements PlugIn {
 		if(!noimages){
 			ImagePlus outimp=new ImagePlus(fname,outstack);
 			outimp.setOpenAsHyperStack(true);
-			outimp.setDimensions(selchan.length+1,1,counter+1);
+			outimp.setDimensions(showchan,1,counter+1);
 			new CompositeImage(outimp,CompositeImage.COLOR).show();
 		}
 	}
