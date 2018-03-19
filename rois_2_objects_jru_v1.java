@@ -36,7 +36,7 @@ public class rois_2_objects_jru_v1 implements PlugIn {
 		gd.addNumericField("Image_Height",maxy,0);
 		String[] schemes={"Indexed","Value","Binary"};
 		gd.addChoice("Coloring Scheme",schemes,schemes[0]);
-		gd.addNumericField("Coloring Value",1.0f,5,15,null);
+		gd.addNumericField("Coloring_Value",1.0f,5,15,null);
 		gd.addNumericField("Point Roi Size",3,0);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		maxx=(int)gd.getNextNumber();

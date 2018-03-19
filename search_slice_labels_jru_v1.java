@@ -47,6 +47,7 @@ public class search_slice_labels_jru_v1 implements PlugIn {
 		String[] labels=new String[stack.getSize()];
 		for(int i=0;i<stack.getSize();i++){
 			labels[i]=stack.getSliceLabel(i+1);
+			if(labels[i]==null) labels[i]=""+(i+1);
 		}
 		int[] foundindices=new int[stack.getSize()];
 		int nfound=0;
@@ -65,6 +66,9 @@ public class search_slice_labels_jru_v1 implements PlugIn {
 					found=true;
 					break;
 				}
+			}
+			if(!found){
+				IJ.log(list[i]+" not found");
 			}
 		}
 		ImageStack stack2=new ImageStack(imp.getWidth(),imp.getHeight());

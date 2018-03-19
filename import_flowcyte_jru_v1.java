@@ -52,6 +52,7 @@ public class import_flowcyte_jru_v1 implements PlugIn {
 			text=text.replace('\\','/');
 			text=text.replace('|','/');
 			text=text.replace("\u000C","/");
+			text=text.replace("\u001E","/");
 			String[] params=text.split("/\\u0024");
 			//String[] params=text.split("/\u0c24");
 			//IJ.log(text);

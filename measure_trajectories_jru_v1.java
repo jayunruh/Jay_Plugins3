@@ -22,7 +22,7 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addChoice("Statistic",jstatistics.stats,"Avg");
 		gd.addNumericField("Measure_Radius",5.0,5,15,null);
-		gd.addNumericField("Measure_Radius_Z (optional)",5.0,5,15,null);
+		gd.addNumericField("Measure_Radius_Z (slices, optional)",5.0,5,15,null);
 		gd.addNumericField("Z_Ratio",1.0,5,15,null);
 		gd.addCheckbox("Measure_Circ?",false);
 		gd.addNumericField("Circ_Radius",1.0,5,15,null);
@@ -59,11 +59,11 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 		//IJ.log(""+npts.length);
 		int totlength=0;
 		for(int i=0;i<npts.length;i++) totlength+=npts[i];
-		float[][] stats=new float[totlength][6];
-		if(threed) stats=new float[totlength][7];
+		float[][] stats=new float[totlength][5+channels];
+		if(threed) stats=new float[totlength][6+channels];
 		if(circmeas){
 			int temp=stats[0].length;
-			stats=new float[totlength][temp+1];
+			stats=new float[totlength][temp+channels];
 		}
 		float[][] objstack=null;
 		if(outobj){
@@ -81,20 +81,24 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 			for(int j=start;j<(start+npts[i]);j++){
 				int tpos=j;
 				if(frames==1) tpos=0;
-				float[] circ=null;
-				float[] circ2=null;
+				float[][] circ=new float[channels][];
+				float[][] circ2=new float[channels][];
 				if(threed){
-					Object[] frame=jutils.get3DZSeries(stack,currchan-1,tpos,frames,slices,channels);
-					circ=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
-					if(circmeas) circ2=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,rad+circrad,circzrad);
+					for(int k=0;k<channels;k++){
+						Object[] frame=jutils.get3DZSeries(stack,k,tpos,frames,slices,channels);
+						circ[k]=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
+						if(circmeas) circ2[k]=getSphereVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,rad+circrad,circzrad);
+					}
 					if(outobj){
-						Object[] tempobjstack=algutils.get3DZSeries(objstack,tpos,currchan-1,frames,slices,channels);
+						Object[] tempobjstack=algutils.get3DZSeries(objstack,tpos,0,frames,slices,1);
 						setSphereObj(tempobjstack,(float)(i+1),width,height,xvals[i][j-start],yvals[i][j-start],zvals[i][j-start]/zratio,rad,zrad);
 					}
 				} else { 
-					Object frame=jutils.get3DSlice(stack,tpos,0,currchan-1,frames,slices,channels);
-					circ=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad);
-					if(circmeas) circ2=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad,rad+circrad);
+					for(int k=0;k<channels;k++){
+						Object frame=jutils.get3DSlice(stack,tpos,0,k,frames,slices,channels);
+						circ[k]=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad);
+						if(circmeas) circ2[k]=getCircleVals(frame,width,height,xvals[i][j-start],yvals[i][j-start],rad,rad+circrad);
+					}
 					if(outobj) setCircleObj((float[])objstack[tpos],(float)(i+1),width,height,xvals[i][j-start],yvals[i][j-start],rad);
 				}
 				stats[counter][0]=i;
@@ -104,22 +108,33 @@ public class measure_trajectories_jru_v1 implements PlugIn {
 				stats[counter][4]=yvals[i][j-start];
 				if(threed){
 					stats[counter][5]=zvals[i][j-start];
-					stats[counter][6]=jstatistics.getstatistic(stat,circ,null);
+					for(int k=0;k<channels;k++){
+						stats[counter][6+k]=jstatistics.getstatistic(stat,circ[k],null);
+					}
 				} else {
-					stats[counter][5]=jstatistics.getstatistic(stat,circ,null);
+					for(int k=0;k<channels;k++){
+						stats[counter][5+k]=jstatistics.getstatistic(stat,circ[k],null);
+					}
 				}
-				if(circmeas) stats[counter][stats[counter].length-1]=jstatistics.getstatistic(circstat,circ2,null);
+				if(circmeas){
+					int off=stats[0].length-channels;
+					for(int k=0;k<channels;k++){
+						stats[counter][off+k]=jstatistics.getstatistic(circstat,circ2[k],null);
+					}
+				}
 				counter++;
 			}
 		}
 		//now output the stats
-		if(!circmeas){
-			if(threed) table_tools.create_table("Traj Stats",stats,new String[]{"id","start","frame","x","y","z",stat});
-			else table_tools.create_table("Traj Stats",stats,new String[]{"id","start","frame","x","y",stat});
-		} else {
-			if(threed) table_tools.create_table("Traj Stats",stats,new String[]{"id","start","frame","x","y","z",stat,"circ_"+circstat});
-			else table_tools.create_table("Traj Stats",stats,new String[]{"id","start","frame","x","y",stat,"circ_"+circstat});
+		String[] statlabels=new String[stats[0].length];
+		statlabels[0]="id"; statlabels[1]="start"; statlabels[2]="frame"; statlabels[3]="x"; statlabels[4]="y";
+		int off=5;
+		if(threed){statlabels[off]="z"; off++;}
+		for(int i=0;i<channels;i++){statlabels[off]=stat+(i+1); off++;}
+		if(circmeas){
+			for(int i=0;i<channels;i++){statlabels[off]="circ_"+circstat+(i+1); off++;}
 		}
+		table_tools.create_table("Traj Stats",stats,statlabels);
 		//and the object image if required
 		if(outobj){
 			new ImagePlus("Objects",jutils.array2stack(objstack,width,height)).show();

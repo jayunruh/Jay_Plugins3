@@ -41,8 +41,15 @@ public class find_circular_background_jru_v1 implements PlugIn {
 		int nchans=imp.getNChannels();
 		Object[] cstack=jutils.get3DCSeries(stack,currslice-1,currframe-1,frames,slices,nchans);
 		float[] summed=new float[width*height];
+		float[] zeromask=new float[width*height];
 		for(int i=0;i<cstack.length;i++){
 			float[] smoothed=algutils.convert_arr_float(cstack[i]);
+			//start by filling image zeros in with the not0min value from elsewhere (eliminate dark regions)
+			float minn0=jstatistics.getstatistic("Not0Min",smoothed,null);
+			for(int j=0;j<width*height;j++){
+				if(smoothed[j]==0.0f) zeromask[j]=1.0f;
+				smoothed[j]=Math.max(minn0,smoothed[j]);
+			}
 			jsmooth.blur2D(smoothed,smoothstdev,width,height);
 			float min=jstatistics.getstatistic("Min",smoothed,null);
 			//float max=jstatistics.getstatistic("Max",smoothed,null);
@@ -50,12 +57,16 @@ public class find_circular_background_jru_v1 implements PlugIn {
 				summed[j]+=(smoothed[j]-min);
 			}
 		}
+		float[] smoothedmask=jsmooth.smooth2DCircle(zeromask,width,height,dia,"Max");
+		for(int i=0;i<width*height;i++){
+			if(smoothedmask[i]>0.0f) zeromask[i]=1.0f;
+		}
 		float[] smoothed=jsmooth.smooth2DCircle(summed,width,height,dia,"Avg");
 		//find the minimum coordinates
-		int minx=border; int miny=border; float minval=smoothed[border+border*width];
+		int minx=border; int miny=border; float minval=jstatistics.getstatistic("Max",smoothed,null);
 		for(int i=border;i<(height-border);i++){
 			for(int j=border;j<(width-border);j++){
-				if(smoothed[j+i*width]<minval){
+				if(zeromask[j+i*width]==0.0f && smoothed[j+i*width]<minval){
 					minval=smoothed[j+i*width];
 					minx=j; miny=i;
 				}

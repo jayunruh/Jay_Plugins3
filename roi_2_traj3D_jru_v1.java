@@ -17,12 +17,13 @@ public class roi_2_traj3D_jru_v1 implements PlugIn {
 	//this plugin takes a set of points, lines, or polylines from the roi manager and makes a 3D trajectory
 
 	public void run(String arg) {
-		GenericDialog gd=new GenericDialog("Options");
-		gd.addNumericField("Z_Ratio",1.0f,5,15,null);
-		gd.showDialog(); if(gd.wasCanceled()) return;
-		float zratio=(float)gd.getNextNumber();
 		ImagePlus imp=WindowManager.getCurrentImage();
 		int width=imp.getWidth(); int height=imp.getHeight();
+		float zratio=(float)jutils.get_zratio(imp);
+		GenericDialog gd=new GenericDialog("Options");
+		gd.addNumericField("Z_Ratio",zratio,5,15,null);
+		gd.showDialog(); if(gd.wasCanceled()) return;
+		zratio=(float)gd.getNextNumber();
 		int channels=imp.getNChannels();
 		int frames=imp.getNFrames();
 		int slices=imp.getNSlices();

@@ -80,8 +80,9 @@ public class divide_by_blurred_jru_v1 implements PlugIn {
 	}
 
 	public static void div_by_smooth(float[] image,int width,int height,float blurstdev,float mindiv,float multiplier){
-		float[] smoothed=image.clone();
-		jsmooth.blur2D(smoothed,blurstdev,width,height);
+		//float[] smoothed=image.clone();
+		//jsmooth.blur2D(smoothed,blurstdev,width,height);
+		float[] smoothed=jutils.gaussian_blur(image,blurstdev,width,height);
 		for(int i=0;i<width*height;i++){
 			float temp=smoothed[i];
 			if(temp<mindiv) temp=mindiv;

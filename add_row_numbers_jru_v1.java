@@ -8,12 +8,14 @@
 import ij.*;
 import ij.process.*;
 import ij.gui.*;
-import java.awt.Frame;
 import ij.plugin.*;
 import ij.util.*;
 import ij.text.*;
+import java.awt.Frame;
+import java.util.*;
+import jguis.*;
 
-public class rename_table_jru_v1 implements PlugIn {
+public class add_row_numbers_jru_v1 implements PlugIn {
 
 	public void run(String arg) {
 		//first get the table window
@@ -24,17 +26,24 @@ public class rename_table_jru_v1 implements PlugIn {
 		}
 		GenericDialog gd=new GenericDialog("Windows");
 		gd.addChoice("Windows",titles,titles[0]);
-		gd.addStringField("New Name","");
+		gd.addCheckbox("Replace Original Table",true);
 		gd.showDialog();
 		if(gd.wasCanceled()){return;}
 		int index=gd.getNextChoiceIndex();
-		String newname=gd.getNextString();
-		String oldname=niframes[index].getTitle();
+		boolean replace=gd.getNextBoolean();
 		if(niframes[index] instanceof TextWindow){
-			niframes[index].setTitle(newname);
-			Menus.updateWindowMenuItem(oldname,newname);
+			TextWindow tw=(TextWindow)niframes[index];
+			TextPanel tp=tw.getTextPanel();
+			String newheadings=tp.getColumnHeadings()+"\trow";
+			List<List<String>> table=table_tools.table2listtable(tp);
+			for(int i=0;i<table.size();i++){
+				table.get(i).add(""+i);
+			}
+			if(replace) table_tools.replace_table(tp,table,newheadings);
+			else new TextWindow(tw.getTitle()+"_1",newheadings,table_tools.print_listtable(table),200,400);
 		} else {
 			IJ.showMessage("wrong window type");
 		}
 	}
+
 }

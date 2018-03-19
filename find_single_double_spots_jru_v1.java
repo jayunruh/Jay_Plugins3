@@ -41,7 +41,7 @@ public class find_single_double_spots_jru_v1 implements PlugIn {
 		ImageProcessor ip=imp.getProcessor();
 		float[] pix=(float[])ip.convertToFloat().getPixels();
 		Rectangle r=ip.getRoi();
-		if(r!=null){
+		if(imp.getRoi()!=null){
 			pix=algutils.get_region2(pix,r.x,r.y,r.width,r.height,width,height);
 			if(findslice){
 				Object[] zstack=jutils.get3DZSeries(stack,currchan,currframe,nframes,nslices,nchans);
@@ -65,12 +65,14 @@ public class find_single_double_spots_jru_v1 implements PlugIn {
 				float maxprofile=0.0f;
 				Object maxpix=null;
 				for(int i=0;i<nslices;i++){
-					float avg=jstatistics.getstatistic("Avg",zstack[i],null);
+					float[] region=algutils.get_region2(zstack[i],border,border,width-2*border,height-2*border,width,height);
+					float avg=jstatistics.getstatistic("Avg",region,null);
 					if(avg>maxprofile){
 						maxprofile=avg; maxslice=i; maxpix=zstack[i];
 					}
 				}
 				pix=algutils.convert_arr_float2(maxpix);
+				IJ.log("max slice = "+maxslice);
 			}
 		}
 		float[][] peaks=findPeaks(pix,width,height,guessstdev,border);
@@ -144,6 +146,10 @@ public class find_single_double_spots_jru_v1 implements PlugIn {
 		float maskr2=maskr*maskr;
 		float masksum=0.0f;
 		int maskcount=0;
+		if(lowery<0) lowery=0;
+		if(lowerx<0) lowerx=0;
+		if(upperx>=width) upperx=width-1;
+		if(uppery>=height) uppery=height-1;
 		for(int i=lowery;i<=uppery;i++){
 			for(int j=lowerx;j<=upperx;j++){
 				if(((j-center[0])*(j-center[0])+(i-center[1])*(i-center[1]))<=maskr2){
