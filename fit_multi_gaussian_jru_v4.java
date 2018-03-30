@@ -98,13 +98,15 @@ public class fit_multi_gaussian_jru_v4 implements PlugIn, NLLSfitinterface_v2 {
 		FitDialog_v3 fd=new FitDialog_v3(pw,this,paramnames);
 		TextWindow outtable=jutils.selectTable("MultiGauss Fits");
 		if(outtable==null){
-			outtable=FitDialog.make_outtable("MultiGauss Fits",paramnames);
+			outtable=fd.make_outtable("MultiGauss Fits",paramnames);
 		}
 		//WindowManager.putBehind();
 		//WindowManager.setCurrentWindow(pw);
 		//WindowManager.toFront(pw);
 		IJ.selectWindow(title);
-		fd.run_fit(params,null,constraints,fixes,outtable);
+		fd.run_fit(params,null,constraints,fixes);
+		fd.append_outtable_params("MultiGauss Fits",pw.getTitle(),params);
+		fd.append_outtable_errs("MultiGauss Fits",pw.getTitle());
 	}
 
 	public double[] fitfunc(double[] params){
