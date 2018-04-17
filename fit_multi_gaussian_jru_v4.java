@@ -37,9 +37,13 @@ public class fit_multi_gaussian_jru_v4 implements PlugIn, NLLSfitinterface_v2 {
 		colors[0]=0;
 		int length=yvals[0].length;
 		RoiManager rman=RoiManager.getInstance();
-		if(rman==null){
-			IJ.showMessage("No Peaks are Selected");
-			return;
+		if(rman==null || rman.getCount()<1){ //if there are no rois, assume roi is at maximum and we are fitting a single gaussian
+			IJ.log("No Peaks are Selected, Assuming Single Peak");
+			//return;
+			if(rman==null) rman=new RoiManager();
+			int maxpos=(int)jstatistics.getstatistic("MaxPos",yvals[0],null);
+			int[] maxcoords=pw.getPlot().getCoordsPosition(xvals[0][maxpos],yvals[0][maxpos]);
+			rman.addRoi(new PointRoi(maxcoords[0],135));
 		}
 		//get all of the peak positions on the x axis
 		Roi[] rois=rman.getRoisAsArray();
