@@ -46,6 +46,8 @@ public class custom_amfret_analysis_jru_v1 implements PlugIn {
 		gd.addCheckbox("Show_Plots",false);
 		gd.addCheckbox("load_gate_roi",false);
 		gd.addStringField("gate_roi_path","path_to_roi");
+		gd.addStringField("Acceptor_Name","FL10-A");
+		gd.addStringField("FRET_Name","FL04-A");
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float minconc=(float)gd.getNextNumber();
 		float maxconc=(float)gd.getNextNumber();
@@ -59,8 +61,13 @@ public class custom_amfret_analysis_jru_v1 implements PlugIn {
 		boolean loadroi=gd.getNextBoolean();
 		String roipath=gd.getNextString();
 		if(!loadroi) roipath=null;
-		List<String> output=(new amfret_utils()).exec(directory,name,outdir,roipath,minconc,maxconc,minamfret,maxamfret,mincells,startcrop,minbimodefrac,maxbimodefrac,showplots);
-		String[] col_labels={"title","acceptor","c^2","Iter","baseline","amp","EC50","alpha","xshift","EC50_errs","alpha_errs","totcells","fretcells","bimodal_metric","f_gate","delta","delta_errs"};
+		String accname=gd.getNextString();
+		String fretname=gd.getNextString();
+		amfret_utils au=new amfret_utils();
+		au.accname=accname;
+		au.fretname=fretname;
+		List<String> output=au.exec(directory,name,outdir,roipath,minconc,maxconc,minamfret,maxamfret,mincells,startcrop,minbimodefrac,maxbimodefrac,showplots);
+		String[] col_labels={"file","datFile","well","plate","acceptor","c^2","Iter","baseline","amp","EC50","alpha","xshift","EC50_errs","alpha_errs","totcells","fretcells","bimodal_metric","f_gate","delta","delta_errs"};
 		TextWindow tw=jutils.selectTable("Stretched Exp Fits");
 		if(tw==null) tw=new TextWindow("Stretched Exp Fits",table_tools.print_string_array(col_labels),"",400,200);
 		if(output!=null) tw.append(table_tools.print_string_array(output,0));

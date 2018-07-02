@@ -26,7 +26,7 @@ public class channel_alignment_z_jru_v1 implements PlugIn {
 		ImageStack stack=imp.getStack();
 		GenericDialog gd=new GenericDialog("Options");
 		for(int i=0;i<channels;i++){
-			gd.addNumericField("Ch"+(i+1)+"_shift",0.0,5,15,null);
+			gd.addNumericField("Ch"+(i+1)+"_shift (slices)",0.0,5,15,null);
 		}
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float[] xvals=new float[channels];
@@ -51,7 +51,9 @@ public class channel_alignment_z_jru_v1 implements PlugIn {
 			}
 		}
 		ImageStack retstack=new ImageStack(width,height);
-		for(int i=0;i<frames*newslices*channels;i++) retstack.addSlice("",new float[width*height]);
+		if(typeindex==0){for(int i=0;i<frames*newslices*channels;i++) retstack.addSlice("",new float[width*height]);}
+		if(typeindex==1){for(int i=0;i<frames*newslices*channels;i++) retstack.addSlice("",new short[width*height]);}
+		if(typeindex==2){for(int i=0;i<frames*newslices*channels;i++) retstack.addSlice("",new byte[width*height]);}
 		for(int i=0;i<frames;i++){
 			for(int j=0;j<slices;j++){
 				for(int k=0;k<channels;k++){
@@ -63,15 +65,7 @@ public class channel_alignment_z_jru_v1 implements PlugIn {
 			}
 			IJ.showStatus("frame"+i);
 		}
-		ImagePlus imp3=new ImagePlus("Realigned",retstack);
-		imp3.setOpenAsHyperStack(true);
-		imp3.setDimensions(channels,newslices,frames);
-		imp3.copyScale(imp);
-		if(imp.isComposite()){
-			(new CompositeImage(imp3,CompositeImage.COLOR)).show();
-		} else {
-			imp3.show();
-		}
+		jutils.create_hyperstack("Realigned",retstack,imp,frames,newslices,channels).show();
 	}
 
 }

@@ -41,6 +41,8 @@ public class custom_amfret_gate_generation_jru_v1 implements PlugIn {
 		gd.addNumericField("Upper_Gate_Conc",99.0,5,15,null);
 		gd.addNumericField("Gate_Percentile",99.0,5,15,null);
 		gd.addNumericField("Gate_Shift (AmFRET bins)",6,0);
+		gd.addStringField("Acceptor_Name","FL10-A");
+		gd.addStringField("FRET_Name","FL04-A");
 		gd.addCheckbox("Show_Plots",false);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float minconc=(float)gd.getNextNumber();
@@ -51,9 +53,13 @@ public class custom_amfret_gate_generation_jru_v1 implements PlugIn {
 		float uppercentile=(float)gd.getNextNumber();
 		float gateper=(float)gd.getNextNumber();
 		int gateshift=(int)gd.getNextNumber();
+		String accname=gd.getNextString();
+		String fretname=gd.getNextString();
 		boolean showplots=gd.getNextBoolean();
-
-		(new amfret_utils()).getGate(directory,name,outdir,roiname,minconc,maxconc,minamfret,maxamfret,startcrop,uppercentile,gateper,gateshift,showplots);
+		amfret_utils au=new amfret_utils();
+		au.accname=accname;
+		au.fretname=fretname;
+		au.getGate(directory,name,outdir,roiname,minconc,maxconc,minamfret,maxamfret,startcrop,uppercentile,gateper,gateshift,showplots);
 	}
 
 }

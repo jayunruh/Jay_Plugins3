@@ -60,10 +60,12 @@ public class get_crypt_xz_profile_jru_v1 implements PlugIn {
 			Roi vertexroi=rois[2*i+1];
 			Rectangle r=vertexroi.getBounds();
 			Roi neckroi=rois[2*i];
-			float[] vertex={r.x,r.y,zratio*(float)(vertexroi.getZPosition()-1)};
+			int vertexz=vertexroi.getZPosition(); if(vertexz==0) vertexz=vertexroi.getPosition();
+			float[] vertex={r.x,r.y,zratio*(float)(vertexz-1)};
 			IJ.log("vertex pos = \t"+table_tools.print_float_array(vertex));
 			double[] params=((EllipseRoi)neckroi).getParams();
-			float[] neck={0.5f*(float)(params[0]+params[2]),0.5f*(float)(params[1]+params[3]),zratio*(float)(neckroi.getZPosition()-1)};
+			int neckz=neckroi.getZPosition(); if(neckz==0) neckz=neckroi.getPosition();
+			float[] neck={0.5f*(float)(params[0]+params[2]),0.5f*(float)(params[1]+params[3]),zratio*(float)(neckz-1)};
 			IJ.log("neck center = \t"+table_tools.print_float_array(neck));
 			float maxd=(float)Math.sqrt((params[2]-params[0])*(params[2]-params[0])+(params[3]-params[1])*(params[3]-params[1]));
 			//for the transformation, need to rotate about the cross-product between the crypt vector and the z axis
@@ -73,18 +75,18 @@ public class get_crypt_xz_profile_jru_v1 implements PlugIn {
 			float[] zvec={0.0f,0.0f,1.0f};
 			float angle=measure_object.get_inner_angle(zvec,cryptvec); //order?
 			IJ.log("angle = \t"+angle);
-			angle=0.0f;
 			//now get the cross product
 			float[] crossprod=measure_object.crossProd(zvec,cryptvec);
 			crossprod=measure_object.norm_vector(crossprod);
-			IJ.log("rot vector = \t"+table_tools.print_float_array(crossprod));
+			//IJ.log("rot vector = \t"+table_tools.print_float_array(crossprod));
 			float[][] rotmat=measure_object.getRotationMatrix(crossprod,angle);
+			IJ.log("rot matrix = \t"+table_tools.print_float_array(rotmat));
 			int rotsize=(int)(expansion*maxd);
 			int rsize=(int)(0.5f*(float)rotsize-0.5f);
 			float[][] xzstack=new float[nchans][];
 			for(int j=0;j<nchans;j++){
 				Object[] chanstack=stack2[j];
-				float[][] rotated=getCryptImage(stack2[j],width,height,vertex,zratio,rotmat,maxd,zoff,zsize,expansion);
+				float[][] rotated=profiler.getRotated3DImage(chanstack,width,height,vertex,zratio,rotmat,(int)(expansion*maxd),zoff,zsize);
 				//new ImagePlus("rotated",jutils.array2stack(rotated,rotsize,rotsize)).show();
 				xzstack[j]=getxzProfile(rotated,rotsize,rotsize,rsize);
 			}
@@ -92,6 +94,7 @@ public class get_crypt_xz_profile_jru_v1 implements PlugIn {
 		}
 	}
 
+	//here we do the circular average through an entire stack
 	public float[] getxzProfile(float[][] stack,int width,int height,int rsize){
 		int newsize=2*rsize-1;
 		float[] xzprof=new float[newsize*stack.length];
@@ -100,36 +103,6 @@ public class get_crypt_xz_profile_jru_v1 implements PlugIn {
 			System.arraycopy(circavg,0,xzprof,i*newsize,newsize);
 		}
 		return xzprof;
-	}
-
-	public float[][] getCryptImage(Object[] stack,int width,int height,float[] vertex,float zratio,float[][] rotmat,float maxd,float zshift,int zsize,float expansion){
-		//now build a rotated crypt by rotating each voxel to its position in the original image
-		int rotsize=(int)(expansion*maxd);
-		//int rotheight=4*rotsize;
-		int rotheight=zsize;
-		float[][] rotated=new float[rotheight][rotsize*rotsize];
-		for(int i=0;i<rotheight;i++){
-			float zpos=(float)(i-zshift);
-			for(int j=0;j<rotsize;j++){
-				float ypos=(float)(j-rotsize/2);
-				for(int k=0;k<rotsize;k++){
-					float xpos=(float)(k-rotsize/2);
-					//if(i==0 && j==0 && k==0) IJ.log(""+xpos+" , "+ypos+" , "+zpos);
-					//multiply by the rotation matrix to tranform int the old coordinates
-					float xoff=rotmat[0][0]*xpos+rotmat[0][1]*ypos+rotmat[0][2]*zpos;
-					float yoff=rotmat[1][0]*xpos+rotmat[1][1]*ypos+rotmat[1][2]*zpos;
-					float zoff=rotmat[2][0]*xpos+rotmat[2][1]*ypos+rotmat[2][2]*zpos;
-					//correct for anisotropic resolution
-					zoff/=zratio;
-					//add the vertex position back
-					xoff+=vertex[0]; yoff+=vertex[1]; zoff+=(vertex[2]/zratio);
-					//if(i==0 && j==0 && k==0) IJ.log(""+xoff+" , "+yoff+" , "+zoff);
-					//finally interpolate the original image at these points
-					rotated[i][k+j*rotsize]=interpolation.interp3D(stack,width,height,xoff,yoff,zoff);
-				}
-			}
-		}
-		return rotated;
 	}
 
 }

@@ -32,6 +32,8 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 		gd.addNumericField("#_x_replicates",avgx,0);
 		gd.addNumericField("#_y_replicates",avgy,0);
 		gd.addCheckbox("Circ_Background",false);
+		String[] backstats={"Avg","Min"};
+		gd.addChoice("Circ_Background_Stat",backstats,backstats[0]);
 		gd.addCheckbox("Output_2D_Plot",false);
 		gd.addStringField("File_Extension (case specific)",".JPG");
 		gd.addCheckbox("load_roi",false);
@@ -43,6 +45,7 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 		avgx=(int)gd.getNextNumber();
 		avgy=(int)gd.getNextNumber();
 		boolean circsub=gd.getNextBoolean();
+		boolean circmin=(gd.getNextChoiceIndex()==1);
 		boolean outplot=gd.getNextBoolean();
 		String ext=gd.getNextString();
 		boolean loadroi=gd.getNextBoolean();
@@ -113,7 +116,7 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 		DirectoryChooser dc=new DirectoryChooser("Choose Directory");
 		String dir=dc.getDirectory();
 		if(dir==null) return;
-		analyzeDirectory(dir,poly,intrad,mask,circ,area,circarea,wells,xpts,ypts,avgx,avgy,circsub,ext,outplot);
+		analyzeDirectory(dir,poly,intrad,mask,circ,area,circarea,wells,xpts,ypts,avgx,avgy,circsub,circmin,ext,outplot);
 		/*String[] fnames=new File(dir).list();
 		for(int k=0;k<fnames.length;k++){
 			if(fnames[k].endsWith(ext)){
@@ -149,7 +152,7 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 		}*/
 	}
 
-	public void analyzeDirectory(String dir,Polygon boundary,int intrad,boolean[] mask,boolean[] circ,int area,int circarea,int[][] wells,int xpts,int ypts,int avgx,int avgy,boolean circsub,String ext,boolean outplot){
+	public void analyzeDirectory(String dir,Polygon boundary,int intrad,boolean[] mask,boolean[] circ,int area,int circarea,int[][] wells,int xpts,int ypts,int avgx,int avgy,boolean circsub,boolean circmin,String ext,boolean outplot){
 		if(dir==null) return;
 		String[] fnames=new File(dir).list();
 		for(int k=0;k<fnames.length;k++){
@@ -158,7 +161,7 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 				if(imp==null) continue;
 				int width=imp.getWidth(); int height=imp.getHeight();
 				float[] pixels=(float[])imp.getProcessor().convertToFloat().getPixels();
-				float[][][] stats2=analyzePlate(pixels,width,height,boundary,intrad,mask,circ,area,circarea,wells,xpts,ypts,avgx,avgy,circsub,false);
+				float[][][] stats2=analyzePlate(pixels,width,height,boundary,intrad,mask,circ,area,circarea,wells,xpts,ypts,avgx,avgy,circsub,circmin,false);
 				int newxpts=(int)((float)xpts/(float)avgx);
 				int newypts=(int)((float)ypts/(float)avgy);
 				int dotpos=fnames[k].indexOf(ext);
@@ -184,14 +187,14 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 			} else {
 				File temp=new File(dir+fnames[k]);
 				if(temp.isDirectory()){
-					analyzeDirectory(temp.getAbsolutePath()+File.separator,boundary,intrad,mask,circ,area,circarea,wells,xpts,ypts,avgx,avgy,circsub,ext,outplot);
+					analyzeDirectory(temp.getAbsolutePath()+File.separator,boundary,intrad,mask,circ,area,circarea,wells,xpts,ypts,avgx,avgy,circsub,circmin,ext,outplot);
 				}
 			}
 			IJ.showProgress(k,fnames.length);
 		}
 	}
 
-	public float[][][] analyzePlate(float[] pixels,int width,int height,Polygon boundary,int intrad,boolean[] mask,boolean[] circ,int area,int circarea,int[][] wells,int xpts,int ypts,int avgx,int avgy,boolean circsub,boolean showrois){
+	public float[][][] analyzePlate(float[] pixels,int width,int height,Polygon boundary,int intrad,boolean[] mask,boolean[] circ,int area,int circarea,int[][] wells,int xpts,int ypts,int avgx,int avgy,boolean circsub,boolean circmin,boolean showrois){
 		int totpts=xpts*ypts;
 		float[] stats=new float[totpts];
 		float[] circstats=new float[totpts];
@@ -204,12 +207,16 @@ public class batch_plate_analysis_jru_v1 implements PlugIn {
 				for(int k=0;k<2*intrad;k++){
 					int xpos=wells[0][i]-intrad+k;
 					if(mask[counter2]) stats[i]+=(pixels[xpos+ypos*width]-background);
-					if(circ[counter2]) circstats[i]+=(pixels[xpos+ypos*width]-background);
+					if(circ[counter2]){
+						if(!circmin) circstats[i]+=(pixels[xpos+ypos*width]-background);
+						else circstats[i]=(float)Math.min(circstats[i],(pixels[xpos+ypos*width]-background));
+					}
 					counter2++;
 				}
 			}
 			if(circsub){
-				float avgback=circstats[i]/(float)circarea;
+				float avgback=circstats[i];
+				if(!circmin) avgback=circstats[i]/(float)circarea;
 				stats[i]-=avgback*(float)area;
 			}
 		}

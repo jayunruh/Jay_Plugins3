@@ -33,7 +33,7 @@ public class export_flowcyte_jru_v1 implements PlugIn {
 		IJ.log(""+fname);
 		List<List<String>> listtable=table_tools.table2listtable(tp);
 		String[] labels=table_tools.getcollabels(tp);
-		labels=table_tools.make_labels_unique(labels);
+		//labels=table_tools.make_labels_unique(labels);
 		(new export_flowcyte()).write_table(listtable,labels,dir,fname);
 		/*int nch=labels.length;
 		int npts=listtable.size();

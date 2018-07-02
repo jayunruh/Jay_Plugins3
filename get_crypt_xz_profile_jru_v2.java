@@ -30,7 +30,7 @@ public class get_crypt_xz_profile_jru_v2 implements PlugIn {
 		gd.addNumericField("Z_Offset (pixel units)",zoff,5,15,null);
 		gd.addNumericField("Z_Size (pixel units)",zsize,0);
 		gd.addNumericField("XY_Size (fraction of diameter)",expansion,5,15,null);
-		gd.addNumericField("N_Crypt_Points",3,0);
+		gd.addNumericField("N_Crypt_Points (including vertex)",3,0);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		zratio=(float)gd.getNextNumber();
 		zoff=(float)gd.getNextNumber();
@@ -65,7 +65,8 @@ public class get_crypt_xz_profile_jru_v2 implements PlugIn {
 			Roi[] neckrois=new Roi[npts-1];
 			for(int j=0;j<(npts-1);j++) neckrois[j]=rois[npts*i+j];
 			//Roi neckroi=rois[npts*i];
-			float[] vertex={r.x,r.y,zratio*(float)(vertexroi.getZPosition()-1)};
+			int vertexz=vertexroi.getZPosition(); if(vertexz==0) vertexz=vertexroi.getPosition();
+			float[] vertex={r.x,r.y,zratio*(float)(vertexz-1)};
 			IJ.log("vertex pos = \t"+table_tools.print_float_array(vertex));
 			//double[] params=((EllipseRoi)neckroi).getParams();
 			//now get the neck centroids
@@ -73,98 +74,75 @@ public class get_crypt_xz_profile_jru_v2 implements PlugIn {
 			float maxd=0; //the max neck diameter
 			for(int j=0;j<(npts-1);j++){
 				double[] params=((EllipseRoi)neckrois[j]).getParams();
-				neck[j]=new float[]{0.5f*(float)(params[0]+params[2]),0.5f*(float)(params[1]+params[3]),zratio*(float)(neckrois[j].getZPosition()-1)};
+				int neckz=neckrois[j].getZPosition(); if(neckz==0) neckz=neckrois[j].getPosition();
+				neck[j]=new float[]{0.5f*(float)(params[0]+params[2]),0.5f*(float)(params[1]+params[3]),zratio*(float)(neckz-1)};
 				IJ.log("neck center "+(j+1)+" = \t"+table_tools.print_float_array(neck[j]));
 				float tempd=(float)Math.sqrt((params[2]-params[0])*(params[2]-params[0])+(params[3]-params[1])*(params[3]-params[1]));
 				if(tempd>maxd) maxd=tempd;
 			}
 			neck[npts-1]=vertex;
+
 			//for the transformation, need to rotate about the cross-product between the crypt vector and the z axis
 			//rotation angle is given by the dot product between the crypt vector and the z axis
 			Object[] xzstacks=new Object[npts-1];
 			int[] sizes=new int[npts-1];
 			int rotsize=(int)(expansion*maxd);
 			int rsize=(int)(0.5f*(float)rotsize-0.5f);
+			int newwidth=rsize*2-1;
 			int sizeleft=zsize;
 			//realign all segments but the first and the last
 			for(int j=1;j<(npts-2);j++){
+			//for(int j=0;j<(npts-1);j++){
 				float[] cryptvec={(neck[j][0]-neck[j+1][0]),(neck[j][1]-neck[j+1][1]),(neck[j][2]-neck[j+1][2])};
 				float tempdist=(float)Math.sqrt(cryptvec[0]*cryptvec[0]+cryptvec[1]*cryptvec[1]+cryptvec[2]*cryptvec[2]);
 				cryptvec=measure_object.norm_vector(cryptvec);
-				float[] zvec={0.0f,0.0f,1.0f};
-				float angle=measure_object.get_inner_angle(zvec,cryptvec); //order?
-				IJ.log("angle = \t"+angle);
-				angle=0.0f;
-				//now get the cross product
-				float[] crossprod=measure_object.crossProd(zvec,cryptvec);
-				crossprod=measure_object.norm_vector(crossprod);
-				IJ.log("rot vector = \t"+table_tools.print_float_array(crossprod));
-				float[][] rotmat=measure_object.getRotationMatrix(crossprod,angle);
 				float[][] xzstack=new float[nchans][];
 				for(int k=0;k<nchans;k++){
-					Object[] chanstack=stack2[k];
-					float[][] rotated=getCryptImage(stack2[k],width,height,neck[j+1],zratio,rotmat,maxd,0.0f,(int)tempdist,expansion);
-					new ImagePlus("rotated",jutils.array2stack(rotated,rotsize,rotsize)).show();
+					float[][] rotated=profiler.getRotated3DImage(stack2[k],width,height,neck[j+1],zratio,cryptvec,(int)(expansion*maxd),0.0f,(int)tempdist);
+					//new ImagePlus("crypt "+i+" rotated "+j,jutils.array2stack(rotated,rotsize,rotsize)).show();
 					xzstack[k]=getxzProfile(rotated,rotsize,rotsize,rsize);
 				}
 				sizeleft-=(int)tempdist;
 				sizes[j]=(int)tempdist;
-				xzstacks[j]=xzstack;
+				xzstacks[j]=algutils.clone_multidim_array(xzstack);
+				//new ImagePlus("crypt "+i+" profile "+j,jutils.array2stack((float[][])xzstacks[j],newwidth,(int)tempdist)).show();
 			}
+
 			//now realign the last segment along with the z offset
 			float[] cryptvec={(neck[npts-2][0]-neck[npts-1][0]),(neck[npts-2][1]-neck[npts-1][1]),(neck[npts-2][2]-neck[npts-1][2])};
 			float tempdist=(float)Math.sqrt(cryptvec[0]*cryptvec[0]+cryptvec[1]*cryptvec[1]+cryptvec[2]*cryptvec[2]);
 			tempdist+=zoff;
 			cryptvec=measure_object.norm_vector(cryptvec);
-			float[] zvec={0.0f,0.0f,1.0f};
-			float angle=measure_object.get_inner_angle(zvec,cryptvec); //order?
-			IJ.log("angle = \t"+angle);
-			angle=0.0f;
-			//now get the cross product
-			float[] crossprod=measure_object.crossProd(zvec,cryptvec);
-			crossprod=measure_object.norm_vector(crossprod);
-			IJ.log("rot vector = \t"+table_tools.print_float_array(crossprod));
-			float[][] rotmat=measure_object.getRotationMatrix(crossprod,angle);
 			float[][] xzstack=new float[nchans][];
 			for(int k=0;k<nchans;k++){
-				Object[] chanstack=stack2[k];
-				float[][] rotated=getCryptImage(stack2[k],width,height,neck[npts-1],zratio,rotmat,maxd,zoff,(int)tempdist,expansion);
-				new ImagePlus("rotated",jutils.array2stack(rotated,rotsize,rotsize)).show();
+				float[][] rotated=profiler.getRotated3DImage(stack2[k],width,height,neck[npts-1],zratio,cryptvec,(int)(expansion*maxd),zoff,(int)tempdist);
+				//new ImagePlus("crypt "+i+" profile "+(npts-2),jutils.array2stack(rotated,rotsize,rotsize)).show();
 				xzstack[k]=getxzProfile(rotated,rotsize,rotsize,rsize);
 			}
 			sizeleft-=(int)tempdist;
 			sizes[npts-2]=(int)tempdist;
-			xzstacks[npts-2]=xzstack;
+			xzstacks[npts-2]=algutils.clone_multidim_array(xzstack);
+			//new ImagePlus("crypt "+i+" profile "+(npts-2),jutils.array2stack((float[][])xzstacks[npts-2],newwidth,(int)tempdist)).show();
 
 			//now realign the first segment along with the leftover zdist
 			cryptvec=new float[]{(neck[0][0]-neck[1][0]),(neck[0][1]-neck[1][1]),(neck[0][2]-neck[1][2])};
 			cryptvec=measure_object.norm_vector(cryptvec);
-			zvec=new float[]{0.0f,0.0f,1.0f};
-			angle=measure_object.get_inner_angle(zvec,cryptvec); //order?
-			IJ.log("angle = \t"+angle);
-			angle=0.0f;
-			//now get the cross product
-			crossprod=measure_object.crossProd(zvec,cryptvec);
-			crossprod=measure_object.norm_vector(crossprod);
-			IJ.log("rot vector = \t"+table_tools.print_float_array(crossprod));
-			rotmat=measure_object.getRotationMatrix(crossprod,angle);
 			xzstack=new float[nchans][];
 			for(int k=0;k<nchans;k++){
-				Object[] chanstack=stack2[k];
-				float[][] rotated=getCryptImage(stack2[k],width,height,neck[1],zratio,rotmat,maxd,0.0f,sizeleft,expansion);
-				new ImagePlus("rotated",jutils.array2stack(rotated,rotsize,rotsize)).show();
+				float[][] rotated=profiler.getRotated3DImage(stack2[k],width,height,neck[1],zratio,cryptvec,(int)(expansion*maxd),0.0f,sizeleft);
+				//new ImagePlus("crypt "+i+" profile 0",jutils.array2stack(rotated,rotsize,rotsize)).show();
 				xzstack[k]=getxzProfile(rotated,rotsize,rotsize,rsize);
 			}
 			sizes[0]=sizeleft;
-			xzstacks[0]=xzstack;
+			xzstacks[0]=algutils.clone_multidim_array(xzstack);
+			//new ImagePlus("crypt "+i+" profile 0",jutils.array2stack((float[][])xzstacks[0],newwidth,(int)tempdist)).show();
 
 			//now we need to concatenate all of the profiles together
 			int totsize=0;
 			for(int j=0;j<sizes.length;j++){totsize+=sizes[j]; IJ.log(""+sizes[j]);}
-			int newwidth=rsize*2-1;
 			xzstack=new float[nchans][newwidth*totsize];
 			int pos=0;
-			for(int j=(sizes.length-1);j>=0;j--){
+			for(int j=(npts-2);j>=0;j--){
 				float[][] temp2=(float[][])xzstacks[j];
 				for(int k=0;k<nchans;k++){
 					System.arraycopy(temp2[k],0,xzstack[k],pos,sizes[j]*newwidth);
@@ -183,36 +161,6 @@ public class get_crypt_xz_profile_jru_v2 implements PlugIn {
 			System.arraycopy(circavg,0,xzprof,i*newsize,newsize);
 		}
 		return xzprof;
-	}
-
-	public float[][] getCryptImage(Object[] stack,int width,int height,float[] vertex,float zratio,float[][] rotmat,float maxd,float zshift,int zsize,float expansion){
-		//now build a rotated crypt by rotating each voxel to its position in the original image
-		int rotsize=(int)(expansion*maxd);
-		//int rotheight=4*rotsize;
-		int rotheight=zsize;
-		float[][] rotated=new float[rotheight][rotsize*rotsize];
-		for(int i=0;i<rotheight;i++){
-			float zpos=(float)(i-zshift);
-			for(int j=0;j<rotsize;j++){
-				float ypos=(float)(j-rotsize/2);
-				for(int k=0;k<rotsize;k++){
-					float xpos=(float)(k-rotsize/2);
-					//if(i==0 && j==0 && k==0) IJ.log(""+xpos+" , "+ypos+" , "+zpos);
-					//multiply by the rotation matrix to tranform int the old coordinates
-					float xoff=rotmat[0][0]*xpos+rotmat[0][1]*ypos+rotmat[0][2]*zpos;
-					float yoff=rotmat[1][0]*xpos+rotmat[1][1]*ypos+rotmat[1][2]*zpos;
-					float zoff=rotmat[2][0]*xpos+rotmat[2][1]*ypos+rotmat[2][2]*zpos;
-					//correct for anisotropic resolution
-					zoff/=zratio;
-					//add the vertex position back
-					xoff+=vertex[0]; yoff+=vertex[1]; zoff+=(vertex[2]/zratio);
-					//if(i==0 && j==0 && k==0) IJ.log(""+xoff+" , "+yoff+" , "+zoff);
-					//finally interpolate the original image at these points
-					rotated[i][k+j*rotsize]=interpolation.interp3D(stack,width,height,xoff,yoff,zoff);
-				}
-			}
-		}
-		return rotated;
 	}
 
 }

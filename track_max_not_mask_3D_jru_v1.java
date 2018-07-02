@@ -102,7 +102,7 @@ public class track_max_not_mask_3D_jru_v1 implements PlugIn, DialogListener,  tr
 		GenericDialog gd=new GenericDialog("Adjust Threshold");
 		gd.addNumericField("Min_separation (pix)",4,0);
 		gd.addNumericField("Thresh_fraction",threshfraction,5,15,null);
-		gd.addNumericField("Edge_buffer (pix)",10,0);
+		gd.addNumericField("XY_Edge_buffer (pix)",10,0);
 		gd.addNumericField("Max_blobs",1000,0);
 		gd.addSlider("Display_Frame",1,getNFrames(),imp.getFrame());
 		gd.addSlider("Display_Slice",1,slices,imp.getCurrentSlice());
