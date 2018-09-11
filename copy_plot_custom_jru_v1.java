@@ -18,6 +18,7 @@ public class copy_plot_custom_jru_v1 implements PlugIn, ClipboardOwner {
 
 	public void run(String arg) {
 		GenericDialog gd=new GenericDialog("Options");
+		gd.addCheckbox("copy_column_titles",true);
 		gd.addCheckbox("copy_first_xvals",true);
 		gd.addCheckbox("copy_other_xvals",false);
 		gd.addCheckbox("copy_first_yvals",true);
@@ -26,6 +27,7 @@ public class copy_plot_custom_jru_v1 implements PlugIn, ClipboardOwner {
 		gd.addCheckbox("copy_upper_and_lower_errors",false);
 		gd.addCheckbox("padding_as_NaN",true);
 		gd.showDialog(); if(gd.wasCanceled()){return;}
+		boolean copytitles=gd.getNextBoolean();
 		boolean copyfirstx=gd.getNextBoolean();
 		boolean copyotherx=gd.getNextBoolean();
 		boolean copyfirsty=gd.getNextBoolean();
@@ -47,6 +49,18 @@ public class copy_plot_custom_jru_v1 implements PlugIn, ClipboardOwner {
 		StringBuffer sb = new StringBuffer();
 		int length=yvals[0].length;
 		int nseries=yvals.length;
+		if(copytitles){
+			for (int j=0; j<nseries; j++) {
+				if(j==0 && copyfirstx) sb.append("x"+(j+1)+"\t");
+				if(j==0 && copyfirsty) sb.append("y"+(j+1)+"\t");
+				if(j>0 && copyotherx) sb.append("x"+(j+1)+"\t");
+				if(j>0 && copyothery) sb.append("y"+(j+1)+"\t");
+				if(copyerrs && errs!=null){
+					if(copybotherrs) sb.append("err1\terr2\t");
+					else sb.append("err1\t");
+				}
+			}
+		}
 		for (int i=0; i<length; i++) {
 			for (int j=0; j<nseries; j++) {
 				String xval=""+xvals[j][i];

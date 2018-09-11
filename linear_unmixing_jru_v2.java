@@ -31,6 +31,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		ImagePlus[] imps=jutils.selectImages(false,2,new String[]{"Spectral_Image","Spectra_Plot"});
 		if(imps==null) return;
 		GenericDialog gd2=new GenericDialog("More Options");
+		gd2.addCheckbox("Normalize_Spectra",true);
 		gd2.addCheckbox("Output_Residuals?",false);
 		gd2.addCheckbox("Output_chi^2?",false);
 		gd2.addCheckbox("Output_errors (plots only)",false);
@@ -47,6 +48,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		}
 		gd2.addNumericField("End_ch",tempnch,0);
 		gd2.showDialog(); if(gd2.wasCanceled()){return;}
+		boolean normspec=gd2.getNextBoolean();
 		boolean outres=gd2.getNextBoolean();
 		boolean outc2=gd2.getNextBoolean();
 		boolean outerrs=gd2.getNextBoolean();
@@ -54,7 +56,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		int startch=(int)gd2.getNextNumber()-1;
 		int endch=(int)gd2.getNextNumber()-1;
 		if(jutils.isPlot(imps[0].getWindow())){
-			Object[] output=exec(imps[0].getWindow(),imps[1].getWindow(),startch,endch,outres,outc2,truncate,outerrs);
+			Object[] output=exec(imps[0].getWindow(),imps[1].getWindow(),startch,endch,outres,outc2,truncate,outerrs,normspec);
 			//if we only have one series, output the data, fit, and all scaled contributions
 			int nser=(Integer)jutils.runPW4VoidMethod(imps[0].getWindow(),"getNSeries");
 			if(nser==1){
@@ -93,7 +95,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 				pw.addErrors(errstack);
 			}
 		} else if(carpet) {
-			Object[] output=exec(imps[0],imps[1].getWindow(),startch,endch,outres,outc2,truncate,outerrs);
+			Object[] output=exec(imps[0],imps[1].getWindow(),startch,endch,outres,outc2,truncate,outerrs,normspec);
 			PlotWindow4 pw=new PlotWindow4("Concentrations","slice","concentration",transpose((float[][])output[0]),null);
 			pw.draw();
 			int outcounter=1;
@@ -115,7 +117,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 				pw.addErrors(errstack);
 			}
 		} else {
-			Object[] outimages=exec(imps[0],imps[1].getWindow(),startch,endch,outres,outc2,truncate);
+			Object[] outimages=exec(imps[0],imps[1].getWindow(),startch,endch,outres,outc2,truncate,normspec);
 			for(int i=0;i<outimages.length;i++) ((ImagePlus)outimages[i]).show();
 		}
 	}
@@ -130,9 +132,12 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		return out;
 	}
 
-	public Object[] exec(ImageWindow input,ImageWindow plot,int startch,int endch,boolean outresid,boolean outc2,boolean truncneg,boolean outerrs){
+
+	public Object[] exec(ImageWindow input,ImageWindow plot,int startch,int endch,boolean outresid,boolean outc2,boolean truncneg,boolean outerrs,boolean normspec){
 		//here we unmix a set of plots
-		float[][] spectra=(float[][])jutils.runPW4VoidMethod(plot,"getYValues");
+		float[][] spectra1=(float[][])jutils.runPW4VoidMethod(plot,"getYValues");
+		float[][] spectra=spectra1;
+		if(normspec) spectra=normSpectra(spectra1);
 		float[][] data=(float[][])jutils.runPW4VoidMethod(input,"getYValues");
 		int slices=data.length;
 		int channels=data[0].length;
@@ -182,9 +187,23 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		return output;
 	}
 
-	public Object[] exec(ImagePlus input,ImageWindow plot,int startch,int endch,boolean outresid,boolean outc2,boolean truncneg,boolean outerrs){
+	public static float[][] normSpectra(float[][] spectra){
+		float[][] normed=new float[spectra.length][spectra[0].length];
+		float[] sums=new float[spectra.length];
+		for(int i=0;i<spectra.length;i++){
+			sums[i]=jstatistics.getstatistic("Sum",spectra[i],null);
+			for(int j=0;j<spectra[i].length;j++){
+				normed[i][j]=spectra[i][j]/sums[i];
+			}
+		}
+		return normed;
+	}
+
+	public Object[] exec(ImagePlus input,ImageWindow plot,int startch,int endch,boolean outresid,boolean outc2,boolean truncneg,boolean outerrs,boolean normspec){
 		//here we unmix a carpet
-		float[][] spectra=(float[][])jutils.runPW4VoidMethod(plot,"getYValues");
+		float[][] spectra1=(float[][])jutils.runPW4VoidMethod(plot,"getYValues");
+		float[][] spectra=spectra1;
+		if(normspec) spectra=normSpectra(spectra1);
 		//float[][] data=(float[][])jutils.runPW4VoidMethod(input,"getYValues");
 		int slices=input.getHeight();
 		int channels=input.getWidth();
@@ -241,9 +260,11 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		return output;
 	}
 
-	public Object[] exec(ImagePlus input,ImageWindow plot,int startch,int endch,boolean outresid,boolean outc2,boolean truncneg){
+	public Object[] exec(ImagePlus input,ImageWindow plot,int startch,int endch,boolean outresid,boolean outc2,boolean truncneg,boolean normspec){
 		//here we unmix a hyperstack
-		float[][] spectra=(float[][])jutils.runPW4VoidMethod(plot,"getYValues");
+		float[][] spectra1=(float[][])jutils.runPW4VoidMethod(plot,"getYValues");
+		float[][] spectra=spectra1;
+		if(normspec) spectra=normSpectra(spectra1);
 		int frames=input.getNFrames();
 		int slices=input.getNSlices();
 		int channels=input.getNChannels();
