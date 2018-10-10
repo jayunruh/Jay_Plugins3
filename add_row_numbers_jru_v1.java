@@ -27,17 +27,21 @@ public class add_row_numbers_jru_v1 implements PlugIn {
 		GenericDialog gd=new GenericDialog("Windows");
 		gd.addChoice("Windows",titles,titles[0]);
 		gd.addCheckbox("Replace Original Table",true);
+		gd.addCheckbox("Start at 1",false);
 		gd.showDialog();
 		if(gd.wasCanceled()){return;}
 		int index=gd.getNextChoiceIndex();
 		boolean replace=gd.getNextBoolean();
+		boolean start1=gd.getNextBoolean();
+		int addval=0;
+		if(start1) addval=1;
 		if(niframes[index] instanceof TextWindow){
 			TextWindow tw=(TextWindow)niframes[index];
 			TextPanel tp=tw.getTextPanel();
 			String newheadings=tp.getColumnHeadings()+"\trow";
 			List<List<String>> table=table_tools.table2listtable(tp);
 			for(int i=0;i<table.size();i++){
-				table.get(i).add(""+i);
+				table.get(i).add(""+(i+addval));
 			}
 			if(replace) table_tools.replace_table(tp,table,newheadings);
 			else new TextWindow(tw.getTitle()+"_1",newheadings,table_tools.print_listtable(table),200,400);

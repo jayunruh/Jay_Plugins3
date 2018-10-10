@@ -25,6 +25,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 	public void run(String arg) {
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addNumericField("Sphere_Radius (nm)",1000.0,5,15,null);
+		gd.addNumericField("Min_npc_dist (nm)",0.0,5,15,null);
 		gd.addNumericField("Number_of_points",100,0);
 		gd.addNumericField("PSF_FWHM (nm)",100.0,5,15,null);
 		gd.addNumericField("PSF_Z_FWHM (nm)",300.0,5,15,null);
@@ -38,6 +39,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		gd.addNumericField("Spb_Separation (nm)",180.0f,5,15,null);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float srad=(float)gd.getNextNumber();
+		float minnpcdist=(float)gd.getNextNumber();
 		int npts=(int)gd.getNextNumber();
 		float xystdev=((float)gd.getNextNumber())/2.35f;
 		float zstdev=((float)gd.getNextNumber())/2.35f;
@@ -50,7 +52,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		float spbamp=(float)gd.getNextNumber();
 		float spbsep=(float)gd.getNextNumber();
 		random=new rngs();
-		float[][] spherepts=makeSphere(npts,srad,64.0f*psize,64.0f*psize,64.0f*psize);
+		float[][] spherepts=makeSphere(npts,srad,64.0f*psize,64.0f*psize,64.0f*psize,minnpcdist);
 		plotPoints("Npcs",spherepts);
 		Object[] stack=new Object[128];
 		for(int i=0;i<128;i++) stack[i]=new float[128*128];
@@ -110,15 +112,32 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		new PlotWindow3D("Sphere Positions: "+name,traj).draw();
 	}
 
-	public float[][] makeSphere(int nparticles,float radius,float xc, float yc, float zc){
+	public float[][] makeSphere(int nparticles,float radius,float xc, float yc, float zc,float minnpcdist){
 		float[][] coords=new float[nparticles][3];
 		for(int i=0;i<nparticles;i++){
 			double[] dcoords=random.random_sphere(radius);
 			coords[i][0]=(float)dcoords[0]+xc;
 			coords[i][1]=(float)dcoords[1]+yc;
 			coords[i][2]=(float)dcoords[2]+zc;
+			if(minnpcdist>0.0f && i>0){
+				while(mindist(coords,coords[i],i)<minnpcdist){
+					dcoords=random.random_sphere(radius);
+					coords[i][0]=(float)dcoords[0]+xc;
+					coords[i][1]=(float)dcoords[1]+yc;
+					coords[i][2]=(float)dcoords[2]+zc;
+				}
+			}
 		}
 		return coords;
+	}
+
+	public float mindist(float[][] coords,float[] query,int nparticles){
+		float dist=(float)Math.sqrt((query[0]-coords[0][0])*(query[0]-coords[0][0])+(query[1]-coords[0][1])*(query[1]-coords[0][1])+(query[2]-coords[0][2])*(query[0]-coords[0][2]));
+		for(int i=1;i<nparticles;i++){
+			float tdist=(float)Math.sqrt((query[0]-coords[i][0])*(query[0]-coords[i][0])+(query[1]-coords[i][1])*(query[1]-coords[i][1])+(query[2]-coords[i][2])*(query[0]-coords[i][2]));
+			if(tdist<dist) dist=tdist;
+		}
+		return dist;
 	}
 
 	public float[][] makeSpb(float bridgedist,float radius,float xc,float yc,float zc){

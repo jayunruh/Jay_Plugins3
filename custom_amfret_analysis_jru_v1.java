@@ -66,6 +66,7 @@ public class custom_amfret_analysis_jru_v1 implements PlugIn {
 		amfret_utils au=new amfret_utils();
 		au.accname=accname;
 		au.fretname=fretname;
+		au.drawgate=true;
 		List<String> output=au.exec(directory,name,outdir,roipath,minconc,maxconc,minamfret,maxamfret,mincells,startcrop,minbimodefrac,maxbimodefrac,showplots);
 		String[] col_labels={"file","datFile","well","plate","acceptor","c^2","Iter","baseline","amp","EC50","alpha","xshift","EC50_errs","alpha_errs","totcells","fretcells","bimodal_metric","f_gate","delta","delta_errs"};
 		TextWindow tw=jutils.selectTable("Stretched Exp Fits");

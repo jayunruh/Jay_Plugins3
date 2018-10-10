@@ -17,8 +17,12 @@ public class duplicate_trajectory_jru_v1 implements PlugIn {
 	public void run(String arg) {
 		ImageWindow iw=WindowManager.getCurrentWindow();
 		int sel=(Integer)jutils.runPW4VoidMethod(iw,"getSelected");
-		if(sel>=0) jutils.getPW4SelCopy(iw);
-		else jutils.getPW4Copy(iw);
+		if(!jutils.is3DPlot(iw)){
+			if(sel>=0) jutils.getPW4SelCopy(iw);
+			else jutils.getPW4Copy(iw);
+		} else {
+			jutils.getPW3DSelCopy(iw,sel);
+		}
 	}
 
 }
