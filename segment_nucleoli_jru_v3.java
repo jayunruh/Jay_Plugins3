@@ -8,7 +8,9 @@
 import ij.*;
 import ij.process.*;
 import ij.gui.*;
-import java.awt.*;
+import java.awt.Frame;
+import java.awt.Polygon;
+import java.util.*;
 import ij.plugin.*;
 import ij.plugin.frame.RoiManager;
 import jguis.*;
@@ -21,7 +23,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 
 	public void run(String arg) {
 		float nucblurstdev=12.0f; float nucrbr=200.0f; float nucdbs=200.0f; float nucthresh=0.15f; int nucmina=5000; int nucmaxa=18000; float nucmincirc=0.8f;
-		float nuclblurstdev=2.0f; float nuclrbr=25.0f; float nuclmeasrbr=200.0f; float nucldbs=30.0f; float nuclthresh=0.2f;
+		int nuclmina=4; float nuclblurstdev=2.0f; float nuclrbr=25.0f; float nuclmeasrbr=200.0f; float nucldbs=30.0f; float nuclthresh=0.2f;
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addNumericField("Nuclear_Channel",3,0);
 		gd.addNumericField("Nucleolar_Channel",2,0);
@@ -33,6 +35,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		gd.addNumericField("Nuclear_Min_Area",nucmina,0);
 		gd.addNumericField("Nuclear_Max_Area",nucmaxa,0);
 		gd.addNumericField("Nuclear_Min_Circularity",nucmincirc,5,15,null);
+		gd.addNumericField("Nucleolar_Min_Area",nuclmina,0);
 		gd.addNumericField("Nucleolar_Blur_Stdev",nuclblurstdev,5,15,null);
 		gd.addNumericField("Nucleolar_Roll_Ball_Rad",nuclrbr,5,15,null);
 		gd.addNumericField("Nucleolar_Meas_Roll_Ball_Rad",nuclmeasrbr,5,15,null);
@@ -49,6 +52,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		nucmina=(int)gd.getNextNumber();
 		nucmaxa=(int)gd.getNextNumber();
 		nucmincirc=(float)gd.getNextNumber();
+		nuclmina=(int)gd.getNextNumber();
 		nuclblurstdev=(float)gd.getNextNumber();
 		nuclrbr=(float)gd.getNextNumber();
 		nuclmeasrbr=(float)gd.getNextNumber();
@@ -71,7 +75,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 
 		//segment the nucleoli
 
-		Object[] temp=segmentNucleoli(nucl,meas,nucobj,width,height,nuclblurstdev,nuclrbr,nuclmeasrbr,nucldbs,nuclthresh);
+		Object[] temp=segmentNucleoli(nucl,meas,nucobj,width,height,nuclblurstdev,nuclrbr,nuclmeasrbr,nucldbs,nuclthresh,nuclmina);
 		//this has measurements, objects, and outlines--output them
 		float[] nuclobj=(float[])temp[1];
 		//new ImagePlus("nucleolar objects",new FloatProcessor(width,height,nuclobj,null)).show();
@@ -84,9 +88,39 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		String[] collabels={"id","nuclear_id","nuclear_area","nuclear_avg","nuclear_stdev","nuclear_circularity","number_nucleoli","nucleolar_area","nucleolar_avg","nucleolar_stdev","nucleolar_circularity"};
 		float[][] measvals=(float[][])temp[0];
 		table_tools.create_table("Nucleolar_Measurements",measvals,collabels);
+		List<List<String>> meastable=table_tools.table2listtable(measvals);
+		//now summarize the nuclear parameters
+		//need to generate nuclear integral, nucleolar integral, nucleoplasmic integral, f nucleolar, tot nucleolar area
+		//firstly sort the table by nuclear_id
+		table_tools.sort_listtable(meastable,1);
+		//now add a nucleolar sum column
+		for(int i=0;i<meastable.size();i++){
+			float nuclarea=table_tools.get_number(meastable,i,7);
+			float nuclavg=table_tools.get_number(meastable,i,8);
+			meastable.get(i).add(""+nuclarea*nuclavg);
+		}
+		//now get the sums
+		List<List<String>> sumtable=table_tools.get_cell_stat_list(meastable,1,"Sum",true);
+		//and the avgs
+		List<List<String>> avgtable=table_tools.get_cell_stat_list(meastable,1,"Avg",true);
+		//for the summary table, use the average nuclear parameters (first 7) and the sum nucleolar parameters (except the stdev and circularity)
+		String[] sumcollabels={"id","nuclear_id","nuclear_area","nuclear_avg","nuclear_stdev","nuclear_circularity","number_nucleoli","nucleolar_area","nucleolar_avg","nucleolar_stdev","nucleolar_circularity","nucleolar_sum","nuclear_sum"};
+		for(int i=0;i<avgtable.size();i++){
+			List<String> avgrow=avgtable.get(i);
+			List<String> sumrow=sumtable.get(i);
+			avgrow.set(7,sumrow.get(7)); //the total nucleolar area
+			avgrow.set(11,sumrow.get(11)); //the total nucleolar sum
+			float nuclsum=Float.parseFloat(sumrow.get(11)); //the total nucleolar sum
+			float nuclarea=Float.parseFloat(sumrow.get(7)); //the total nucleolar area
+			avgrow.set(8,""+nuclsum/nuclarea); //the revised nucleolar avg
+			float nucavg=Float.parseFloat(sumrow.get(3)); //the nuclear avg
+			float nucarea=Float.parseFloat(sumrow.get(2)); //the nuclear area
+			avgrow.add(""+nucarea*nucavg);
+		}
+		table_tools.create_table("Nuclear_Summaries",avgtable,sumcollabels);
 	}
 
-	public static Object[] segmentNucleoli(float[] nucleolipix,float[] nucmeaspix,float[] nucobj,int width,int height,float blurstdev,float rollballrad,float measrollballrad,float divblurstdev,float threshfrac){
+	public static Object[] segmentNucleoli(float[] nucleolipix,float[] nucmeaspix,float[] nucobj,int width,int height,float blurstdev,float rollballrad,float measrollballrad,float divblurstdev,float threshfrac,int nuclmina){
 		//the workflow here is blur (try 2), roll ball sub (try 25), div by blurred (try 30), thresh within nuclei (try 0.15)
 		float[] backsub=nucleolipix.clone();
 		//a minimal blur to decrease noise
@@ -130,7 +164,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		int nnuclei=fb.nobjects;
 		int[] nuccount=new int[nnuclei];
 		float[] nucleolarobj=fb.dofindblobs(nucleolarmask);
-		fb.filter_area(nucleolarobj,new int[]{4,10000000},true);
+		fb.filter_area(nucleolarobj,new int[]{nuclmina,10000000},true);
 		int[] clusterids=new int[fb.nobjects];
 		for(int i=0;i<nnuclei;i++){
 			int[] ids=fb.get_cluster_ids(nucobj,nucleolarobj,i+1);

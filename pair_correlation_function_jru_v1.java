@@ -15,6 +15,10 @@ import jguis.*;
 public class pair_correlation_function_jru_v1 implements PlugIn {
 
 	public void run(String arg) {
+		GenericDialog gd=new GenericDialog("Options");
+		gd.addCheckbox("raw histogram",false);
+		gd.showDialog(); if(gd.wasCanceled()) return;
+		boolean rawhist=gd.getNextBoolean();
 		ImageWindow iw=WindowManager.getCurrentWindow();
 		float[][] xvals1=(float[][])jutils.runPW4VoidMethod(iw,"getXValues");
 		float[][] yvals1=(float[][])jutils.runPW4VoidMethod(iw,"getYValues");
@@ -58,7 +62,7 @@ public class pair_correlation_function_jru_v1 implements PlugIn {
 		}
 		float[] rvals=new float[histlength];
 		for(int i=0;i<histlength;i++){
-			rhist[i]/=(float)length*2.0f*((float)i+0.5f)*(float)rbinsize*(float)rbinsize; //normalize by the volume of each bin shell
+			if(!rawhist) rhist[i]/=(float)length*2.0f*((float)i+0.5f)*(float)rbinsize*(float)rbinsize; //normalize by the volume of each bin shell
 			rvals[i]=(float)(rbinsize*i);
 		}
 		new PlotWindow4("Pair Correlation Function","r","G(r)",rvals,rhist).draw();
