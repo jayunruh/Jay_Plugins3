@@ -68,7 +68,9 @@ public class custom_amfret_analysis_jru_v1 implements PlugIn {
 		au.fretname=fretname;
 		au.drawgate=true;
 		List<String> output=au.exec(directory,name,outdir,roipath,minconc,maxconc,minamfret,maxamfret,mincells,startcrop,minbimodefrac,maxbimodefrac,showplots);
-		String[] col_labels={"file","datFile","well","plate","acceptor","c^2","Iter","baseline","amp","EC50","alpha","xshift","EC50_errs","alpha_errs","totcells","fretcells","bimodal_metric","f_gate","delta","delta_errs"};
+		//output=output.subList(0,20);
+		//String[] col_labels={"file","datFile","well","plate","acceptor","c^2","Iter","baseline","amp","EC50","alpha","xshift","EC50_errs","alpha_errs","totcells","fretcells","bimodal_metric","f_gate","delta","delta_errs"};
+		String[] col_labels={"file","datFile","well","plate","acceptor","c^2","Iter","baseline","amp","EC50","alpha","xshift","EC50_errs","alpha_errs","totcells","fretcells","bimodal_metric","f_gate","delta","delta_errs","accstdev","nfaccmean","nfaccstdev","faccmean","faccstdev","fretmean","fretstdev"};
 		TextWindow tw=jutils.selectTable("Stretched Exp Fits");
 		if(tw==null) tw=new TextWindow("Stretched Exp Fits",table_tools.print_string_array(col_labels),"",400,200);
 		if(output!=null) tw.append(table_tools.print_string_array(output,0));

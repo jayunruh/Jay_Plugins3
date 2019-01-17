@@ -113,8 +113,8 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 			float nuclsum=Float.parseFloat(sumrow.get(11)); //the total nucleolar sum
 			float nuclarea=Float.parseFloat(sumrow.get(7)); //the total nucleolar area
 			avgrow.set(8,""+nuclsum/nuclarea); //the revised nucleolar avg
-			float nucavg=Float.parseFloat(sumrow.get(3)); //the nuclear avg
-			float nucarea=Float.parseFloat(sumrow.get(2)); //the nuclear area
+			float nucavg=Float.parseFloat(avgrow.get(3)); //the nuclear avg
+			float nucarea=Float.parseFloat(avgrow.get(2)); //the nuclear area
 			avgrow.add(""+nucarea*nucavg);
 		}
 		table_tools.create_table("Nuclear_Summaries",avgtable,sumcollabels);

@@ -92,7 +92,7 @@ public class track_max_not_mask_jru_v2 implements PlugIn, DialogListener,  track
 		gd.addNumericField("Link_Range (pix)",10.0,5,15,null);
 		gd.addNumericField("Max_Link_Delay (frames)",1,0);
 		gd.addNumericField("Min_Traj_Length (frames)",5,0);
-		gd.addCheckbox("Track_Center_Of_Mass",true);
+		gd.addCheckbox("Track_Center_Of_Mass",false);
 		gd.addDialogListener(this);
 		gd.showDialog(); if(gd.wasCanceled()){return null;}
 		//criteria are 0minarea, 1maxarea, 2searchd(nu), 3maxblobs, 4thresh, 5minsep, 6edgebuf

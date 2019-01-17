@@ -53,7 +53,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		float spbsep=(float)gd.getNextNumber();
 		random=new rngs();
 		float[][] spherepts=makeSphere(npts,srad,64.0f*psize,64.0f*psize,64.0f*psize,minnpcdist);
-		plotPoints("Npcs",spherepts);
+		plotPoints("Npcs",spherepts,psize);
 		Object[] stack=new Object[128];
 		for(int i=0;i<128;i++) stack[i]=new float[128*128];
 		drawPoints(stack,spherepts,psize,psize,xystdev,zstdev,128,128,amp);
@@ -62,7 +62,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 			Object[] spbstack=new Object[128];
 			for(int i=0;i<128;i++) spbstack[i]=new float[128*128];
 			float[][] spbpts=makeSpb(spbsep,srad,64.0f*psize,64.0f*psize,64.0f*psize);
-			plotPoints("SPB",spbpts);
+			plotPoints("SPB",spbpts,psize);
 			drawPoints(spbstack,spbpts,psize,psize,xystdev,zstdev,128,128,spbamp);
 			if(addnoise) addNoise(spbstack,readstdev,gain);
 			//now interleave the stacks
@@ -93,15 +93,18 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		}
 	}
 
-	public void plotPoints(String name,float[][] coords){
+	public void plotPoints(String name,float[][] coords,float psize){
 		float[][] xpts=new float[coords.length][1];
 		float[][] ypts=new float[coords.length][1];
 		float[][] zpts=new float[coords.length][1];
 		TextWindow tw=new TextWindow("Simulated Coordinates: "+name,"point\tx\ty\tz","",400,200);
 		for(int i=0;i<coords.length;i++){
-			xpts[i][0]=coords[i][0]/1000.0f;
-			ypts[i][0]=coords[i][1]/1000.0f;
-			zpts[i][0]=coords[i][2]/1000.0f;
+			xpts[i][0]=coords[i][0];
+			xpts[i][0]/=psize; //convert to pixels
+			ypts[i][0]=coords[i][1];
+			ypts[i][0]/=psize;
+			zpts[i][0]=coords[i][2];
+			zpts[i][0]/=psize;
 			tw.append(""+(i+1)+"\t"+xpts[i][0]+"\t"+ypts[i][0]+"\t"+zpts[i][0]);
 		}
 		Traj3D traj=new Traj3D("x","y","z",xpts,ypts,zpts,null);
@@ -110,6 +113,18 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 			shapes[i]=1;
 		}
 		new PlotWindow3D("Sphere Positions: "+name,traj).draw();
+		//now create a pseudoimage with points masked
+		float[][] stack=new float[128][128*128];
+		for(int i=0;i<coords.length;i++){
+			int xpos=(int)Math.round(xpts[i][0]);
+			if(xpos<0) xpos=0; if(xpos>=128) xpos=128;
+			int ypos=(int)Math.round(ypts[i][0]);
+			if(ypos<0) ypos=0; if(ypos>=128) ypos=128;
+			int zpos=(int)Math.round(zpts[i][0]);
+			if(xpos<0) xpos=0; if(xpos>=128) xpos=128;
+			stack[zpos][xpos+ypos*128]=1.0f;
+		}
+		new ImagePlus("Sphere Positions Image: "+name,jutils.array2stack(stack,128,128)).show();
 	}
 
 	public float[][] makeSphere(int nparticles,float radius,float xc, float yc, float zc,float minnpcdist){
