@@ -37,6 +37,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		gd.addCheckbox("Add_Spb (2nd channel)",false);
 		gd.addNumericField("Spb_Max_Intensity (photons)",100.0,5,15,null);
 		gd.addNumericField("Spb_Separation (nm)",180.0f,5,15,null);
+		gd.addCheckbox("Spb_on_top",false);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float srad=(float)gd.getNextNumber();
 		float minnpcdist=(float)gd.getNextNumber();
@@ -51,6 +52,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		boolean addspb=gd.getNextBoolean();
 		float spbamp=(float)gd.getNextNumber();
 		float spbsep=(float)gd.getNextNumber();
+		boolean spbtop=gd.getNextBoolean();
 		random=new rngs();
 		float[][] spherepts=makeSphere(npts,srad,64.0f*psize,64.0f*psize,64.0f*psize,minnpcdist);
 		plotPoints("Npcs",spherepts,psize);
@@ -61,7 +63,9 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		if(addspb){
 			Object[] spbstack=new Object[128];
 			for(int i=0;i<128;i++) spbstack[i]=new float[128*128];
-			float[][] spbpts=makeSpb(spbsep,srad,64.0f*psize,64.0f*psize,64.0f*psize);
+			float[][] spbpts=null;
+			if(!spbtop) spbpts=makeSpb(spbsep,srad,64.0f*psize,64.0f*psize,64.0f*psize);
+			else spbpts=makeSpbTop(spbsep,srad,64.0f*psize,64.0f*psize,64.0f*psize);
 			plotPoints("SPB",spbpts,psize);
 			drawPoints(spbstack,spbpts,psize,psize,xystdev,zstdev,128,128,spbamp);
 			if(addnoise) addNoise(spbstack,readstdev,gain);
@@ -187,6 +191,31 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		rotaxisvector[1]/=rval;
 		rotaxisvector[2]/=rval;
 		rotate_vector(normvec,rotaxisvector,angledist);
+		coords[1][0]=(float)normvec[0]*radius+xc;
+		coords[1][1]=(float)normvec[1]*radius+yc;
+		coords[1][2]=(float)normvec[2]*radius+zc;
+		float spbdist=(float)Math.sqrt((coords[1][0]-coords[0][0])*(coords[1][0]-coords[0][0])+(coords[1][1]-coords[0][1])*(coords[1][1]-coords[0][1])+(coords[1][2]-coords[0][2])*(coords[1][2]-coords[0][2]));
+		//IJ.log("simulated spb dist "+spbdist);
+		return coords;
+	}
+
+	public float[][] makeSpbTop(float bridgedist,float radius,float xc,float yc,float zc){
+		//this makes a mother and daughter spb with bridgedist between them
+		//in this version we put the spb on the top of the nucleus pointing "up" the y axis
+		//double[] dcoords=random.random_sphere(radius);
+		double[] dcoords={0.0,0.0,(double)radius};
+		float[][] coords=new float[2][3];
+		coords[0][0]=(float)dcoords[0]+xc;
+		coords[0][1]=(float)dcoords[1]+yc;
+		coords[0][2]=(float)dcoords[2]+zc;
+		//now that we have the mother coordinate, we need to put the daughter in a random cone
+		//centered on the mother vector
+		//need to convert the bridge distance to an angle distance in radians
+		double angledist=Math.atan(bridgedist/radius);
+		//IJ.log(""+angledist);
+		double[] normvec={dcoords[0]/(double)radius,dcoords[1]/(double)radius,dcoords[2]/(double)radius};
+		//in this case we rotate about the x axis
+		rotate_vector(normvec,new double[]{1.0,0.0,0.0},angledist);
 		coords[1][0]=(float)normvec[0]*radius+xc;
 		coords[1][1]=(float)normvec[1]*radius+yc;
 		coords[1][2]=(float)normvec[2]*radius+zc;
