@@ -53,9 +53,10 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		float spbamp=(float)gd.getNextNumber();
 		float spbsep=(float)gd.getNextNumber();
 		boolean spbtop=gd.getNextBoolean();
+		boolean table=true;
 		random=new rngs();
 		float[][] spherepts=makeSphere(npts,srad,64.0f*psize,64.0f*psize,64.0f*psize,minnpcdist);
-		plotPoints("Npcs",spherepts,psize);
+		plotPoints("Npcs",spherepts,psize,table);
 		Object[] stack=new Object[128];
 		for(int i=0;i<128;i++) stack[i]=new float[128*128];
 		drawPoints(stack,spherepts,psize,psize,xystdev,zstdev,128,128,amp);
@@ -66,7 +67,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 			float[][] spbpts=null;
 			if(!spbtop) spbpts=makeSpb(spbsep,srad,64.0f*psize,64.0f*psize,64.0f*psize);
 			else spbpts=makeSpbTop(spbsep,srad,64.0f*psize,64.0f*psize,64.0f*psize);
-			plotPoints("SPB",spbpts,psize);
+			plotPoints("SPB",spbpts,psize,table);
 			drawPoints(spbstack,spbpts,psize,psize,xystdev,zstdev,128,128,spbamp);
 			if(addnoise) addNoise(spbstack,readstdev,gain);
 			//now interleave the stacks
@@ -97,11 +98,12 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 		}
 	}
 
-	public void plotPoints(String name,float[][] coords,float psize){
+	public void plotPoints(String name,float[][] coords,float psize,boolean table){
 		float[][] xpts=new float[coords.length][1];
 		float[][] ypts=new float[coords.length][1];
 		float[][] zpts=new float[coords.length][1];
-		TextWindow tw=new TextWindow("Simulated Coordinates: "+name,"point\tx\ty\tz","",400,200);
+		TextWindow tw=null;
+		if(table) tw=new TextWindow("Simulated Coordinates: "+name,"point\tx\ty\tz","",400,200);
 		for(int i=0;i<coords.length;i++){
 			xpts[i][0]=coords[i][0];
 			xpts[i][0]/=psize; //convert to pixels
@@ -109,7 +111,7 @@ public class simulate_npcs_jru_v1 implements PlugIn {
 			ypts[i][0]/=psize;
 			zpts[i][0]=coords[i][2];
 			zpts[i][0]/=psize;
-			tw.append(""+(i+1)+"\t"+xpts[i][0]+"\t"+ypts[i][0]+"\t"+zpts[i][0]);
+			if(table) tw.append(""+(i+1)+"\t"+xpts[i][0]+"\t"+ypts[i][0]+"\t"+zpts[i][0]);
 		}
 		Traj3D traj=new Traj3D("x","y","z",xpts,ypts,zpts,null);
 		int[] shapes=traj.getShapes();

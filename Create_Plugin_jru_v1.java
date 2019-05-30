@@ -17,7 +17,7 @@ import java.util.Calendar;
 public class Create_Plugin_jru_v1 implements PlugIn {
 
 	public void run(String arg) {
-		String[] plugintypes={"Blank","Image","Plot","Table","Macro"};
+		String[] plugintypes={"Blank","Image","Plot","Table","Macro","Plot3D"};
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addChoice("Plugin Type",plugintypes,plugintypes[1]);
 		gd.showDialog(); if(gd.wasCanceled()){return;}
@@ -48,6 +48,17 @@ public class Create_Plugin_jru_v1 implements PlugIn {
 			codetext+="\t\tString[] col_labels=table_tools.getcollabels(tp);\n";
 			codetext+="\t\tList<List<String>> listtable=table_tools.table2listtable(tp);\n";
 			importtext="import ij.text.*;\nimport java.util.*;\nimport jguis.*;\n";
+		}
+		if(pt==5){
+			codetext="\t\tImageWindow iw=WindowManager.getCurrentWindow();\n";
+			codetext+="\t\tfloat[][] xvals=(float[][])jutils.runPW4VoidMethod(iw,\"getXValues\");\n";
+			codetext+="\t\tfloat[][] yvals=(float[][])jutils.runPW4VoidMethod(iw,\"getYValues\");\n";
+			codetext+="\t\tfloat[][][] zvals=(float[][][])jutils.runPW4VoidMethod(iw,\"getZValues\");\n";
+			codetext+="\t\tint[][] npts=(int[][])jutils.runPW4VoidMethod(iw,\"getNpts\");\n";
+			codetext+="\t\t//delete the following lines if not a trajectory\n";
+			codetext+="\t\tfloat[][] tzvals=zvals[0];\n";
+			codetext+="\t\tint[] tnpts=npts[0];\n";
+			importtext="import jguis.*;\n";
 		}
 		String year=""+Calendar.getInstance().get(Calendar.YEAR);
 		String pluginName = "My_Plugin.java";
