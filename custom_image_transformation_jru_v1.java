@@ -36,13 +36,15 @@ public class custom_image_transformation_jru_v1 implements PlugIn {
 		gd.addNumericField("Dest_Z_Ratio",destzratio,5,15,null);
 		gd.addNumericField("Src_Z_Ratio",srczratio,5,15,null);
 		gd.addNumericField("Scaling (dest/src)",1.0,5,15,null);
+		gd.addNumericField("Pixel_Size (1 if centroid is pixel units)",1.0,5,15,null);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		destzratio=(float)gd.getNextNumber();
 		srczratio=(float)gd.getNextNumber();
 		float s=(float)gd.getNextNumber();
+		float psize=(float)gd.getNextNumber();
 		List<List<String>> rlisttable=table_tools.table2listtable(tw[0].getTextPanel());
 		List<List<String>> clisttable=table_tools.table2listtable(tw[1].getTextPanel());
-		double[][] rd={{0.999046,-0.02942476,0.03226281},{0.02566373,0.9934486,0.11135952},{-0.035328194,-0.11042526,0.9932563}};
+		//double[][] rd={{0.999046,-0.02942476,0.03226281},{0.02566373,0.9934486,0.11135952},{-0.035328194,-0.11042526,0.9932563}};
 		//IJ.log(table_tools.print_double_array(rd));
 		//float[][] r=algutils.convert_arr_float(rd);
 		float[][] rt=table_tools.get_matrix(rlisttable);
@@ -56,6 +58,8 @@ public class custom_image_transformation_jru_v1 implements PlugIn {
 		float[] cdest=table_tools.get_row_array(clisttable,0);
 		//IJ.log(table_tools.print_float_array(cdest));
 		float[] csource=table_tools.get_row_array(clisttable,1);
+		for(int i=0;i<csource.length;i++) csource[i]/=psize;
+		for(int i=0;i<cdest.length;i++) cdest[i]/=psize;
 		//IJ.log(table_tools.print_float_array(csource));
 		float[][] transformed=new float[destslices*srcframes*srcchans][];
 		for(int l=0;l<srcframes;l++){
