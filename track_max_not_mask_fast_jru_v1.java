@@ -20,12 +20,13 @@ import jalgs.*;
 import jguis.*;
 
 public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  track_interface{
-	int slices,currframe,width,height,linkdelay,minsize;
+	int slices,currframe,width,height,linkdelay,minsize,nchan;
 	float threshfraction,linkrange;
 	boolean com;
 	String fracstat;
 	FindBlobsFast fb;
 	ImageStack stack;
+	Object[] stack2;
 	ImagePlus imp;
 
 	public void run(String arg) {
@@ -33,6 +34,15 @@ public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  
 		width=imp.getWidth(); height=imp.getHeight();
 		stack=imp.getStack();
 		slices=stack.getSize();
+		//assume we do not have a 3D stack here
+		nchan=imp.getNChannels();
+		int currchan=imp.getC()-1;
+		if(nchan>1){
+			slices=slices/nchan;
+			stack2=jutils.get3DTSeries(stack,0,currchan,slices,1,nchan);
+		} else {
+			stack2=jutils.stack2array(stack);
+		}
 		GenericDialog gd5=new GenericDialog("Options");
 		gd5.addChoice("Threshhold Statistic",jstatistics.stats,jstatistics.stats[2]);
 		gd5.showDialog(); if(gd5.wasCanceled()) return;
@@ -45,20 +55,8 @@ public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  
 		imp.setHideOverlay(true);
 		fb.setcriteria(criteria);
 		fb.usemaxpt=(!com);
-		currframe=1;
+		currframe=0;
 		tracker tk=new tracker(linkrange,linkdelay);
-		boolean testthings=true;
-		/*if(testthings){
-			int subsize=256;
-			int overlap=1+(int)criteria[5];
-			int nwide=(int)((float)width/(float)(subsize-overlap)); //this is the number of full images in x
-			int xextra=width-nwide*(subsize-overlap);
-			int nhigh=(int)((float)height/(float)(subsize-overlap)); //this is the number of full images in y
-			int yextra=height-nhigh*(subsize-overlap);
-			IJ.log(""+nwide+" , "+nhigh+" , "+xextra+" , "+yextra);
-			float[] subdata=algutils.get_region2(stack.getPixels(1),0,0,subsize,subsize,width,height);
-			new ImagePlus("test subregion",new FloatProcessor(subsize,subsize,subdata,null)).show();
-		}*/
 		List<List<float[]>> trajlist=tk.track2D(this);
 		int maxlength=0;
 		int ntraj=0;
@@ -99,12 +97,13 @@ public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  
 	}
 
 	public float[] get_criteria(ImagePlus imp){
+		int dispframe=1+(imp.getCurrentSlice()-1)/nchan;
 		GenericDialog gd=new GenericDialog("Adjust Threshold");
 		gd.addNumericField("Min_separation (pix)",4,0);
 		gd.addNumericField("Thresh_fraction",threshfraction,5,15,null);
 		gd.addNumericField("Edge_buffer (pix)",10,0);
 		gd.addNumericField("Max_blobs",1000,0);
-		gd.addSlider("Display_Frame",1,getNFrames(),imp.getCurrentSlice());
+		gd.addSlider("Display_Frame",1,getNFrames(),dispframe);
 		gd.addNumericField("Link_Range (pix)",10.0,5,15,null);
 		gd.addNumericField("Max_Link_Delay (frames)",1,0);
 		gd.addNumericField("Min_Traj_Length (frames)",0,0);
@@ -140,13 +139,13 @@ public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  
 		com=gd.getNextBoolean();
 		fb.setcriteria(criteria);
 		fb.usemaxpt=(!com);
-		int tempframe=imp.getCurrentSlice();
+		int tempframe=1+(imp.getCurrentSlice()-1)/nchan;
 		if(frame!=tempframe){
-			tempframe=frame;
-			imp.setPosition(tempframe);
+			int dispframe=(frame-1)*nchan+1;
+			imp.setPosition(dispframe);
 			imp.updateAndDraw();
 		}
-		List<float[]> currparams=getFrameParams(tempframe);
+		List<float[]> currparams=getFrameParams(tempframe-1);
 		if(currparams!=null){
 			Overlay overlay=new Overlay();
 			int blobwidth=(int)criteria[5];
@@ -166,7 +165,7 @@ public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  
 	}
 
 	public List<float[]> getFrameParams(int frame){
-		float[] pixels=algutils.convert_arr_float2(stack.getPixels(frame));
+		float[] pixels=algutils.convert_arr_float2(stack2[frame]);
 		float max=jstatistics.getstatistic(fracstat,pixels,null);
 		fb.thresh=threshfraction*max;
 		if(fb.thresh==0.0f) return null;

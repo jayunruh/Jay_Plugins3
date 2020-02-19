@@ -20,7 +20,7 @@ public class hist_2D_2_1D_gated_jru_v1 implements PlugIn {
 		ImageWindow iw=WindowManager.getCurrentWindow();
 		int[] indices=(int[])jutils.runReflectionMethod(iw,"getroiindices",null);
 		if(indices==null){
-			IJ.error("Select Roi First");
+			IJ.log("Select Roi First");
 			return;
 		}
 		GenericDialog gd=new GenericDialog("Options");
