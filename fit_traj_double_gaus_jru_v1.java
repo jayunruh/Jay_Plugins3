@@ -14,11 +14,13 @@ import jguis.*;
 import jalgs.*;
 import jalgs.jfit.*;
 import ij.text.*;
+import jalgs.jsim.*;
 
 public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 {
 	public float[] tempx;
 	public gausfunc gf;
 	public boolean output;
+	public rngs random;
 
 	public void run(String arg) {
 		output=true;
@@ -29,6 +31,7 @@ public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 
 		gd.addNumericField("Max_Stdev",100.0f,5,15,null);
 		gd.addCheckbox("Get_Errors",true);
 		gd.addCheckbox("Single_Gaus_Fit",false);
+		gd.addCheckbox("Output_Ratio_Parameters",true);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float stdevguess=(float)gd.getNextNumber();
 		float srguess=(float)gd.getNextNumber();
@@ -36,11 +39,13 @@ public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 
 		float maxstdev=(float)gd.getNextNumber();
 		boolean errs=gd.getNextBoolean();
 		boolean single=gd.getNextBoolean();
+		boolean outratio=gd.getNextBoolean();
 		ImageWindow iw=WindowManager.getCurrentWindow();
 		PlotWindow4 pw=jutils.getPW4SelCopy(iw);
 		tempx=pw.getXValues()[0];
 		float[] yvals=pw.getYValues()[0];
 		gf=new gausfunc();
+		random=new rngs();
 		//first find the maximum
 		float maxpos=jstatistics.getstatistic("MaxPos",yvals,null);
 		float x1=tempx[(int)maxpos];
@@ -119,25 +124,38 @@ public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 
 		pw.addPoints(tempx,fit,true);
 		pw.updatePlot();
 		String[] paramnames={"baseline","amp","ampratio","xc","d","stdev","stdevratio"};
+		if(!outratio){
+			paramnames[1]="amp1"; paramnames[2]="xc1"; paramnames[3]="stdev1";
+			paramnames[4]="amp2"; paramnames[5]="xc2"; paramnames[6]="stdev2";
+		}
 		TextWindow outtable=jutils.selectTable("Double Gauss Fits");
 		if(outtable==null){
 			outtable=FitDialog.make_outtable("Double Gauss Fits",paramnames);
+		}
+		float[] err=null;
+		if(errs){
+			output=false;
+			monte_carlo_errors_v2 mcerrs=new monte_carlo_errors_v2(this,0.0001,10,false,0.1);
+			double[][] temp1=mcerrs.geterrors(params,fixes,constraints,yvals,null,1000);
+			float[][] temp=algutils.convert_arr_float(temp1);
+			err=new float[temp.length];
+			for(int i=0;i<err.length;i++) err[i]=jstatistics.getstatistic("StDev",temp[i],null);
+		}
+		//now convert the parameters away from ratio parameters if desired
+		double[][] convparams={params,algutils.convert_arr_double(err)};
+		if(!outratio){
+			convparams=convertParams(params,algutils.convert_arr_double(err));
+			fixes=new int[]{0,0,0,0,0,0,0};
 		}
 		StringBuffer sb=new StringBuffer();
 		sb.append(pw.getTitle());
 		IJ.log("Chi Squared = "+(float)stats[1]); sb.append("\t"+(float)stats[1]);
 		IJ.log("Iterations = "+(int)stats[0]); sb.append("\t"+(int)stats[0]);
 		for(int i=0;i<params.length;i++){
-			IJ.log(paramnames[i]+" = "+params[i]);  sb.append("\t"+(float)params[i]);
+			IJ.log(paramnames[i]+" = "+convparams[0][i]);  sb.append("\t"+(float)convparams[0][i]);
 		}
 		outtable.append(sb.toString());
 		if(errs){
-			output=false;
-			monte_carlo_errors_v2 mcerrs=new monte_carlo_errors_v2(this,0.0001,10,false,0.1);
-			double[][] temp1=mcerrs.geterrors(params,fixes,constraints,yvals,null,1000);
-			float[][] temp=algutils.convert_arr_float(temp1);
-			float[] err=new float[temp.length];
-			for(int i=0;i<err.length;i++) err[i]=jstatistics.getstatistic("StDev",temp[i],null);
 			StringBuffer sb2=new StringBuffer();
 			sb2.append(pw.getTitle()+"_errs");
 			sb2.append("\t"+(float)err[err.length-1]);
@@ -145,7 +163,7 @@ public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 
 			int counter=0;
 			for(int i=0;i<params.length;i++){
 				if(fixes[i]==0){
-					sb2.append("\t"+(float)err[counter]);
+					sb2.append("\t"+(float)convparams[1][counter]);
 					counter++;
 				} else {
 					sb2.append("\t0.0 ");
@@ -174,5 +192,56 @@ public class fit_traj_double_gaus_jru_v1 implements PlugIn, NLLSfitinterface_v2 
 
 	public void showresults(String results){
 		if(output) IJ.log(results);
+	}
+
+	public double[][] convertParams(double[] params,double[] sems){
+		//this converts peak pair parameters (using ratios) to individual parameters and their sem values
+		//output parameters are 0base,1a1,2xc1,3sd1,4a2,5xc2,6sd2
+		if(params[2]==0.0){
+			double[] newparams={params[0],params[1],params[3],params[5],0.0,0.0,0.0};
+			double[] newsems=new double[newparams.length];
+			if(sems!=null){
+				newsems[0]=sems[0]; newsems[1]=sems[1]; newsems[2]=sems[2]; newsems[3]=sems[3];
+			}
+			return new double[][]{newparams,newsems};
+		}
+		double[] sems2=new double[params.length];
+		if(sems!=null){
+			sems2=sems.clone();
+		}
+		double[] ampconverted=avgRatio2Vals(params[1],params[2],sems[1],sems[2]);
+		double[] sdconverted=avgRatio2Vals(params[5],params[6],sems[5],sems[6]);
+		double xc1=params[3]-0.5*params[4];
+		double xc2=xc1+params[4];
+		double xc1sem=0.0;
+		double xc2sem=0.0;
+		if(sems!=null){
+			xc1sem=Math.sqrt(sems[3]*sems[3]+0.25*sems[4]*sems[4]);
+			xc2sem=Math.sqrt(xc1sem*xc1sem+sems[4]*sems[4]);
+		}
+		double[] newparams={params[0],ampconverted[0],xc1,sdconverted[0],ampconverted[1],xc2,sdconverted[1]};
+		double[] newsems={sems[0],ampconverted[2],xc1sem,sdconverted[2],ampconverted[3],xc2sem,sdconverted[3]};
+		return new double[][]{newparams,newsems};
+	}
+
+	public double[] avgRatio2Vals(double avg,double ratio,double avgsem,double ratiosem){
+		//converts average and ratio parameters to individual paramaters
+		//sem values are propagated by monte carlo simulations
+		double val2=2.0*avg/(1.0+ratio);
+		double val1=2.0*avg-val2;
+		double val1sem=0.0;
+		double val2sem=0.0;
+		if(avgsem>0.0 && ratiosem>0.0){
+			float[][] sims=new float[2][10000];
+			for(int i=0;i<10000;i++){
+				double avgval=random.gasdev(avg,avgsem);
+				double ratioval=random.gasdev(ratio,ratiosem);
+				sims[1][i]=(float)(2.0*avgval/(1.0+ratioval));
+				sims[0][i]=(float)(2.0*avgval-sims[1][i]);
+			}
+			val1sem=(double)jstatistics.getstatistic("StDev",sims[0],null);
+			val2sem=(double)jstatistics.getstatistic("StDev",sims[1],null);
+		}
+		return new double[]{val1,val2,val1sem,val2sem};
 	}
 }

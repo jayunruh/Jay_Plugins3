@@ -29,9 +29,11 @@ public class transform_from_table_jru_v1 implements PlugIn {
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addNumericField("Scale_Factor",1.0,5,15,null);
 		gd.addCheckbox("Interpolate?",false);
+		gd.addCheckbox("Global Transformations?",false);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		float scalefactor=(float)gd.getNextNumber();
 		boolean interp=gd.getNextBoolean();
+		boolean global=gd.getNextBoolean();
 		for(int i=0;i<listtable.size();i++){
 			//List<String> row=listtable.get(i);
 			for(int j=0;j<3;j++){
@@ -43,7 +45,7 @@ public class transform_from_table_jru_v1 implements PlugIn {
 		}
 		ImagePlus[] imps=jutils.selectImages(false,1);
 		if(imps==null) return;
-		ImagePlus aligned=SIFTj.doTransformations(imps[0],transformations,interp);
+		ImagePlus aligned=SIFTj.doTransformations(imps[0],transformations,interp,global);
 		aligned.show();
 	}
 
