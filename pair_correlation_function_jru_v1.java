@@ -17,8 +17,10 @@ public class pair_correlation_function_jru_v1 implements PlugIn {
 	public void run(String arg) {
 		GenericDialog gd=new GenericDialog("Options");
 		gd.addCheckbox("raw histogram",false);
+		gd.addCheckbox("2D_normalization (otherwise 3D)",true);
 		gd.showDialog(); if(gd.wasCanceled()) return;
 		boolean rawhist=gd.getNextBoolean();
+		boolean norm2d=gd.getNextBoolean();
 		ImageWindow iw=WindowManager.getCurrentWindow();
 		float[][] xvals1=(float[][])jutils.runPW4VoidMethod(iw,"getXValues");
 		float[][] yvals1=(float[][])jutils.runPW4VoidMethod(iw,"getYValues");
@@ -62,7 +64,15 @@ public class pair_correlation_function_jru_v1 implements PlugIn {
 		}
 		float[] rvals=new float[histlength];
 		for(int i=0;i<histlength;i++){
-			if(!rawhist) rhist[i]/=(float)length*2.0f*((float)i+0.5f)*(float)rbinsize*(float)rbinsize; //normalize by the volume of each bin shell
+			if(!rawhist){
+				if(norm2d){
+					//normalize by the volume of each bin band (pcf will be proportional to particle density)
+					rhist[i]/=(float)(length-1)*2.0f*(float)Math.PI*((float)i+0.5f)*(float)rbinsize; 
+				} else {
+					//normalize by the volume of each bin shell (pcf will be proportional to particle density)
+					rhist[i]/=(float)(length-1)*4.0f*(float)Math.PI*(((float)i+0.5f)*((float)i+0.5f)*(float)rbinsize+0.08333f*(float)rbinsize*(float)rbinsize*(float)rbinsize); 
+				}
+			}
 			rvals[i]=(float)(rbinsize*i);
 		}
 		new PlotWindow4("Pair Correlation Function","r","G(r)",rvals,rhist).draw();

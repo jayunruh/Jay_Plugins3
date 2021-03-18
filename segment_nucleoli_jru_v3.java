@@ -28,6 +28,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		gd.addNumericField("Nuclear_Channel",3,0);
 		gd.addNumericField("Nucleolar_Channel",2,0);
 		gd.addNumericField("Nucleolar_Meas_Channel",1,0);
+		gd.addNumericField("Third_Meas_Channel",-1,0);
 		gd.addNumericField("Nuclear_Blur_Stdev",nucblurstdev,5,15,null);
 		gd.addNumericField("Nuclear_Roll_Ball_Rad",nucrbr,5,15,null);
 		gd.addNumericField("Nuclear_Div_By_Stdev",nucdbs,5,15,null);
@@ -45,6 +46,7 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		int nucchan=(int)gd.getNextNumber();
 		int nuclchan=(int)gd.getNextNumber();
 		int measchan=(int)gd.getNextNumber();
+		int measchan3=(int)gd.getNextNumber();
 		nucblurstdev=(float)gd.getNextNumber();
 		nucrbr=(float)gd.getNextNumber();
 		nucdbs=(float)gd.getNextNumber();
@@ -65,8 +67,14 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		//start by getting the channel images
 		float[] nuc=algutils.convert_arr_float2(stack.getPixels(nucchan));
 		float[] nucl=algutils.convert_arr_float2(stack.getPixels(nuclchan));
-		float[] meas=nucl;
-		if(measchan!=nuclchan) meas=algutils.convert_arr_float2(stack.getPixels(measchan));
+		float[][] meas=new float[][]{nucl};
+		if(measchan!=nuclchan) meas=new float[][]{algutils.convert_arr_float2(stack.getPixels(measchan))};
+		float[] third=null;
+		if(measchan3>0){
+			third=algutils.convert_arr_float2(stack.getPixels(measchan3));
+			float[] tmeas=meas[0];
+			meas=new float[][]{tmeas,third};
+		}
 
 		//segment the nuclei: gaus blur (try 8), roll ball sub (try 200), div by blurred (try 200), threshold (try 0.1), filter size (try 5000 to 18000)
 
@@ -86,6 +94,9 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 			rman.addRoi(new PolygonRoi(nucloutlines[i],Roi.POLYGON));
 		}
 		String[] collabels={"id","nuclear_id","nuclear_area","nuclear_avg","nuclear_stdev","nuclear_circularity","number_nucleoli","nucleolar_area","nucleolar_avg","nucleolar_stdev","nucleolar_circularity"};
+		if(measchan3>0){
+			collabels=new String[]{"id","nuclear_id","nuclear_area","nuclear_avg","nuclear_stdev","nuclear_circularity","number_nucleoli","nucleolar_area","nucleolar_avg","nucleolar_stdev","nucleolar_circularity","thirdnucavg","thirdnucstdev","thirdnuclavg","thirdnuclstdev"};
+		}
 		float[][] measvals=(float[][])temp[0];
 		table_tools.create_table("Nucleolar_Measurements",measvals,collabels);
 		List<List<String>> meastable=table_tools.table2listtable(measvals);
@@ -98,6 +109,10 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 			float nuclarea=table_tools.get_number(meastable,i,7);
 			float nuclavg=table_tools.get_number(meastable,i,8);
 			meastable.get(i).add(""+nuclarea*nuclavg);
+			if(measchan3>0){
+				float thirdavg=table_tools.get_number(meastable,i,13);
+				meastable.get(i).add(""+nuclarea*thirdavg);
+			}
 		}
 		//now get the sums
 		List<List<String>> sumtable=table_tools.get_cell_stat_list(meastable,1,"Sum",true);
@@ -105,33 +120,57 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		List<List<String>> avgtable=table_tools.get_cell_stat_list(meastable,1,"Avg",true);
 		//for the summary table, use the average nuclear parameters (first 7) and the sum nucleolar parameters (except the stdev and circularity)
 		String[] sumcollabels={"id","nuclear_id","nuclear_area","nuclear_avg","nuclear_stdev","nuclear_circularity","number_nucleoli","nucleolar_area","nucleolar_avg","nucleolar_stdev","nucleolar_circularity","nucleolar_sum","nuclear_sum"};
+		if(measchan3>0){
+			sumcollabels=new String[]{"id","nuclear_id","nuclear_area","nuclear_avg","nuclear_stdev","nuclear_circularity","number_nucleoli","nucleolar_area","nucleolar_avg","nucleolar_stdev","nucleolar_circularity","thirdnucavg","thirdnucstdev","thirdnuclavg","thirdnuclstdev","nucleolar_sum","thirdnuclsum","nuclear_sum","thirdnucsum"};
+		}
 		for(int i=0;i<avgtable.size();i++){
-			List<String> avgrow=avgtable.get(i);
-			List<String> sumrow=sumtable.get(i);
-			avgrow.set(7,sumrow.get(7)); //the total nucleolar area
-			avgrow.set(11,sumrow.get(11)); //the total nucleolar sum
-			float nuclsum=Float.parseFloat(sumrow.get(11)); //the total nucleolar sum
-			float nuclarea=Float.parseFloat(sumrow.get(7)); //the total nucleolar area
-			avgrow.set(8,""+nuclsum/nuclarea); //the revised nucleolar avg
-			float nucavg=Float.parseFloat(avgrow.get(3)); //the nuclear avg
-			float nucarea=Float.parseFloat(avgrow.get(2)); //the nuclear area
-			avgrow.add(""+nucarea*nucavg);
+			if(measchan3>0){
+				List<String> avgrow=avgtable.get(i);
+				List<String> sumrow=sumtable.get(i);
+				avgrow.set(7,sumrow.get(7)); //the total nucleolar area
+				avgrow.set(15,sumrow.get(15)); //the total nucleolar sum
+				float nuclsum=Float.parseFloat(sumrow.get(15)); //the total nucleolar sum
+				float nuclarea=Float.parseFloat(sumrow.get(7)); //the total nucleolar area
+				avgrow.set(8,""+nuclsum/nuclarea); //the revised nucleolar avg
+				avgrow.set(16,sumrow.get(16));
+				float thirdnuclsum=Float.parseFloat(sumrow.get(16));
+				avgrow.set(13,sumrow.get(13));
+				float nucavg=Float.parseFloat(avgrow.get(3)); //the nuclear avg
+				float nucarea=Float.parseFloat(avgrow.get(2)); //the nuclear area
+				avgrow.add(""+nucarea*nucavg);
+				float thirdnucavg=Float.parseFloat(avgrow.get(11));
+				avgrow.add(""+nucarea*thirdnucavg);
+			} else {
+				List<String> avgrow=avgtable.get(i);
+				List<String> sumrow=sumtable.get(i);
+				avgrow.set(7,sumrow.get(7)); //the total nucleolar area
+				avgrow.set(11,sumrow.get(11)); //the total nucleolar sum
+				float nuclsum=Float.parseFloat(sumrow.get(11)); //the total nucleolar sum
+				float nuclarea=Float.parseFloat(sumrow.get(7)); //the total nucleolar area
+				avgrow.set(8,""+nuclsum/nuclarea); //the revised nucleolar avg
+				float nucavg=Float.parseFloat(avgrow.get(3)); //the nuclear avg
+				float nucarea=Float.parseFloat(avgrow.get(2)); //the nuclear area
+				avgrow.add(""+nucarea*nucavg);
+			}
 		}
 		table_tools.create_table("Nuclear_Summaries",avgtable,sumcollabels);
 	}
 
-	public static Object[] segmentNucleoli(float[] nucleolipix,float[] nucmeaspix,float[] nucobj,int width,int height,float blurstdev,float rollballrad,float measrollballrad,float divblurstdev,float threshfrac,int nuclmina){
+	public static Object[] segmentNucleoli(float[] nucleolipix,float[][] nucmeaspix,float[] nucobj,int width,int height,float blurstdev,float rollballrad,float measrollballrad,float divblurstdev,float threshfrac,int nuclmina){
 		//the workflow here is blur (try 2), roll ball sub (try 25), div by blurred (try 30), thresh within nuclei (try 0.15)
 		float[] backsub=nucleolipix.clone();
 		//a minimal blur to decrease noise
 		jsmooth.blur2D(backsub,blurstdev,width,height);
 		//now a rolling ball subtraction
 		backsub=jutils.sub_roll_ball_back(backsub,rollballrad,width,height);
-		float[] meas=backsub;
+		float[][] meas=new float[][]{backsub};
 		if(nucmeaspix!=null){
-			meas=nucmeaspix.clone();
-			jsmooth.blur2D(meas,blurstdev,width,height);
-			meas=jutils.sub_roll_ball_back(meas,measrollballrad,width,height);
+			meas=new float[nucmeaspix.length][];
+			for(int i=0;i<nucmeaspix.length;i++){
+				meas[i]=nucmeaspix[i].clone();
+				jsmooth.blur2D(meas[i],blurstdev,width,height);
+				meas[i]=jutils.sub_roll_ball_back(meas[i],measrollballrad,width,height);
+			}
 		}
 		findblobs3 fb=new findblobs3(width,height);
 		fb.set_objects(nucobj);
@@ -140,11 +179,15 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		float[] nucmaxs=fb.get_all_object_stats(nucobj,backsub,filllims,"Max");
 		float[] nucavgs=fb.get_all_object_stats(nucobj,backsub,filllims,"Avg");
 		float[] nucstdevs=fb.get_all_object_stats(nucobj,backsub,filllims,"StDev");
-		float[] nucmeasavgs=nucavgs;
-		float[] nucmeasstdevs=nucstdevs;
+		float[][] nucmeasavgs=new float[][]{nucavgs};
+		float[][] nucmeasstdevs=new float[][]{nucstdevs};
 		if(nucmeaspix!=null){
-			nucmeasavgs=fb.get_all_object_stats(nucobj,meas,filllims,"Avg");
-			nucmeasstdevs=fb.get_all_object_stats(nucobj,meas,filllims,"StDev");
+			nucmeasavgs=new float[nucmeaspix.length][];
+			nucmeasstdevs=new float[nucmeaspix.length][];
+			for(int i=0;i<nucmeaspix.length;i++){
+				nucmeasavgs[i]=fb.get_all_object_stats(nucobj,meas[i],filllims,"Avg");
+				nucmeasstdevs[i]=fb.get_all_object_stats(nucobj,meas[i],filllims,"StDev");
+			}
 		}
 		Polygon[] nuclearoutlines=fb.get_object_outlines(nucobj);
 		float[][] nuclearmeas=fb.get_area_perim_circ(nucobj,nuclearoutlines);
@@ -175,24 +218,34 @@ public class segment_nucleoli_jru_v3 implements PlugIn {
 		}
 		//nuclear measurements: 0nucleolar_id, 1nucid, 2area, 3avg, 4stdev, 5nuccirc, 6nucleolar count; nucleolar measurements: 7area, 8avg, 9stdev, 10circularity
 		int[][] nlims=fb.getallfilllimits(nucleolarobj);
-		float[] nucleolaravgs=fb.get_all_object_stats(nucleolarobj,meas,nlims,"Avg");
-		float[] nucleolarstdev=fb.get_all_object_stats(nucleolarobj,meas,nlims,"StDev");
+		float[][] nucleolaravgs=new float[meas.length][];
+		float[][] nucleolarstdev=new float[meas.length][];
+		for(int i=0;i<meas.length;i++){
+			nucleolaravgs[i]=fb.get_all_object_stats(nucleolarobj,meas[i],nlims,"Avg");
+			nucleolarstdev[i]=fb.get_all_object_stats(nucleolarobj,meas[i],nlims,"StDev");
+		}
 		Polygon[] nucleolaroutlines=fb.get_object_outlines(nucleolarobj);
 		float[][] nucleolarmeas=fb.get_area_perim_circ(nucleolarobj,nucleolaroutlines);
-		float[][] measurements=new float[fb.nobjects][11];
+		float[][] measurements=new float[fb.nobjects][11+(meas.length-1)*4];
 		for(int i=0;i<fb.nobjects;i++){
 			int nucid=clusterids[i];
 			measurements[i][0]=(float)(i+1);
 			measurements[i][1]=(float)nucid;
 			measurements[i][2]=(float)nucareas[nucid-1];
-			measurements[i][3]=nucmeasavgs[nucid-1];
-			measurements[i][4]=nucmeasstdevs[nucid-1];
+			measurements[i][3]=nucmeasavgs[0][nucid-1];
+			measurements[i][4]=nucmeasstdevs[0][nucid-1];
 			measurements[i][5]=nuclearmeas[2][nucid-1];
 			measurements[i][6]=nuccount[nucid-1];
 			measurements[i][7]=nucleolarmeas[0][i];
-			measurements[i][8]=nucleolaravgs[i];
-			measurements[i][9]=nucleolarstdev[i];
+			measurements[i][8]=nucleolaravgs[0][i];
+			measurements[i][9]=nucleolarstdev[0][i];
 			measurements[i][10]=nucleolarmeas[2][i];
+			for(int j=0;j<(meas.length-1);j++){
+				measurements[i][j*4+11]=nucmeasavgs[j][nucid-1];
+				measurements[i][j*4+12]=nucmeasstdevs[j][nucid-1];
+				measurements[i][j*4+13]=nucleolaravgs[j][nucid-1];
+				measurements[i][j*4+14]=nucleolarstdev[j][nucid-1];
+			}
 		}
 		return new Object[]{measurements,nucleolarobj,nucleolaroutlines};
 	}
