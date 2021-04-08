@@ -41,12 +41,19 @@ public class search_slice_labels_jru_v1 implements PlugIn {
 				input=table_tools.print_string_array(colvals,3);
 			}
 		}
+		//IJ.log("input = \n"+input);
 		int nchan=imp.getNChannels();
 		int nslices=imp.getNSlices();
+		int nframes=imp.getNFrames();
+		if(nframes==1){
+			nframes=nslices;
+			nslices=1;
+		}
 		ImageStack stack=imp.getStack();
-		String[] labels=new String[stack.getSize()];
-		for(int i=0;i<stack.getSize();i++){
-			labels[i]=stack.getSliceLabel(i+1);
+		String[] labels=new String[nframes];
+		for(int i=0;i<nframes;i++){
+			int firstframe=i*nchan*nslices;
+			labels[i]=stack.getSliceLabel(firstframe+1);
 			if(labels[i]==null) labels[i]=""+(i+1);
 		}
 		int[] foundindices=new int[stack.getSize()];
@@ -71,6 +78,7 @@ public class search_slice_labels_jru_v1 implements PlugIn {
 				IJ.log(list[i]+" not found");
 			}
 		}
+		IJ.log("found "+nfound+" labels, assembling stack");
 		ImageStack stack2=new ImageStack(imp.getWidth(),imp.getHeight());
 		for(int i=0;i<nfound;i++){
 			if(nchan>1){
