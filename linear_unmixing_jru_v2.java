@@ -14,6 +14,7 @@ import java.io.*;
 import jguis.*;
 import jalgs.*;
 import jalgs.jfit.*;
+import java.util.concurrent.*;
 
 public class linear_unmixing_jru_v2 implements PlugIn {
 	int species,mainoptionsindex,totspecies,maxlength;
@@ -22,6 +23,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 	float[][] speciesspectra;
 	float[] backgroundspectrum;
 	int[] speciesindices;
+	int nthreads=1;
 
 	public void run(String arg) {
 		//this plugin performs linear unmixing and in so doing finds the intensity of multiple components in frequency resolved image
@@ -47,6 +49,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 			carpet=true;
 		}
 		gd2.addNumericField("End_ch",tempnch,0);
+		gd2.addNumericField("N_Threads",1,0);
 		gd2.showDialog(); if(gd2.wasCanceled()){return;}
 		boolean normspec=gd2.getNextBoolean();
 		boolean outres=gd2.getNextBoolean();
@@ -55,6 +58,7 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		boolean truncate=gd2.getNextBoolean();
 		int startch=(int)gd2.getNextNumber()-1;
 		int endch=(int)gd2.getNextNumber()-1;
+		nthreads=(int)gd2.getNextNumber();
 		if(jutils.isPlot(imps[0].getWindow())){
 			Object[] output=exec(imps[0].getWindow(),imps[1].getWindow(),startch,endch,outres,outc2,truncate,outerrs,normspec);
 			//if we only have one series, output the data, fit, and all scaled contributions
@@ -280,7 +284,10 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 		ImageStack residstack=new ImageStack(width,height);
 		ImageStack c2stack=new ImageStack(width,height);
 		int counter=0;
+		ExecutorService executor=null;
+		if(nthreads>1) executor=Executors.newFixedThreadPool(nthreads);
 		for(int i=0;i<frames;i++){
+			counter=0;
 			for(int j=0;j<slices;j++){
 				Object[] cseries=jutils.get3DCSeries(stack,j,i,frames,slices,channels);
 				float[][] contr=new float[spectra.length][width*height];
@@ -288,28 +295,59 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 				if(outresid) resid=new float[channels][width*height];
 				float[] c2=null;
 				if(outc2) c2=new float[width*height];
-				for(int k=0;k<width*height;k++){
-					float[] col=algutils.convert_arr_float(algutils.get_stack_col(cseries,width,height,k,cseries.length));
-					double[] contributions=lls.fitdata(col,null);
-					for(int l=0;l<contributions.length;l++){
-						if(truncneg && contributions[l]<0.0f) contributions[l]=0.0f;
-						contr[l][k]=(float)contributions[l];
+				for(int n=0;n<height;n++){
+					for(int m=0;m<width;m++){
+						int k=m+n*width;
+						if(nthreads>1){
+							Runnable worker=new UnmixSpectrum(lls,cseries,width,height,contr,k,truncneg,resid,c2);
+							//worker.run();
+							executor.execute(worker);
+						} else {
+						float[] col=algutils.convert_arr_float(algutils.get_stack_col(cseries,width,height,k,cseries.length));
+						double[] contributions=lls.fitdata(col,null);
+						for(int l=0;l<contributions.length;l++){
+							if(truncneg && contributions[l]<0.0f) contributions[l]=0.0f;
+							contr[l][k]=(float)contributions[l];
+						}
+						if(outresid){
+							float[] residcol=lls.get_fresid(contributions,col,null);
+							for(int l=0;l<channels;l++){resid[l][k]=residcol[l];}
+						}
+						if(outc2){
+							c2[k]=(float)lls.get_c2(contributions,col,null);
+						}
+						}
 					}
-					if(outresid){
-						float[] residcol=lls.get_fresid(contributions,col,null);
-						for(int l=0;l<channels;l++){resid[l][k]=residcol[l];}
-					}
-					if(outc2){
-						c2[k]=(float)lls.get_c2(contributions,col,null);
-					}
+					/*if(nthreads>1){
+						executor.shutdown();
+						//wait for threads to complete
+						while(!executor.isTerminated()){;}
+						//System.gc();
+						executor=Executors.newFixedThreadPool(nthreads);
+					}*/
 				}
+				/*if(nthreads>1){
+					executor.shutdown();
+					//wait for threads to complete
+					while(!executor.isTerminated()){;}
+					//System.gc();
+					executor=Executors.newFixedThreadPool(nthreads);
+				}*/
 				for(int k=0;k<spectra.length;k++) outstack.addSlice("",contr[k]);
 				if(outresid) for(int k=0;k<channels;k++) residstack.addSlice("",resid[k]);
 				if(outc2) c2stack.addSlice("",c2);
 				counter++;
-				IJ.showProgress(counter,j+i*slices);
+				IJ.showProgress(counter,slices);
+				IJ.log("frame "+counter+" out of "+slices+" initiated");
 			}
 		}
+		if(nthreads>1){
+			executor.shutdown();
+			//wait for threads to complete
+			IJ.log("waiting for unmixing threads to finish");
+			while(!executor.isTerminated()){;}
+		}
+		IJ.log("showing image");
 		ImagePlus outimp=new ImagePlus("Unmixed Stack",outstack);
 		outimp.copyScale(input);
 		outimp.setOpenAsHyperStack(true);
@@ -339,4 +377,42 @@ public class linear_unmixing_jru_v2 implements PlugIn {
 	}
 	
 
+}
+
+class UnmixSpectrum implements Runnable{
+	linleastsquares lls;
+	Object[] cseries;
+	int index,width,height;
+	float[][] contr;
+	float[][] resid;
+	float[] c2;
+	boolean truncneg;
+	
+	public UnmixSpectrum(linleastsquares lls,Object[] cseries,int width,int height,float[][] contr,int index,boolean truncneg,float[][] resid,float[] c2){
+		this.lls=lls;
+		this.cseries=cseries;
+		this.contr=contr;
+		this.index=index;
+		this.truncneg=truncneg;
+		this.resid=resid;
+		this.c2=c2;
+		this.width=width;
+		this.height=height;
+	}
+
+	public void run(){
+		float[] col=algutils.convert_arr_float(algutils.get_stack_col(cseries,width,height,index,cseries.length));
+		double[] contributions=lls.fitdata(col,null);
+		for(int l=0;l<contributions.length;l++){
+			if(truncneg && contributions[l]<0.0f) contributions[l]=0.0f;
+			contr[l][index]=(float)contributions[l];
+		}
+		if(resid!=null){
+			float[] residcol=lls.get_fresid(contributions,col,null);
+			for(int l=0;l<residcol.length;l++){resid[l][index]=residcol[l];}
+		}
+		if(c2!=null){
+			c2[index]=(float)lls.get_c2(contributions,col,null);
+		}
+	}
 }
