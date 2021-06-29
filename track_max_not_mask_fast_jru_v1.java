@@ -75,12 +75,12 @@ public class track_max_not_mask_fast_jru_v1 implements PlugIn, DialogListener,  
 			List<float[]> temp=trajlist.get(i);
 			if(temp.size()>=minsize){
 				npts[counter]=temp.size();
-				starts[counter]=""+((float[])temp.get(0))[4];
+				starts[counter]=""+((float[])temp.get(0))[7];
 				for(int j=0;j<npts[counter];j++){
 					float[] temp2=temp.get(j);
 					xvals[counter][j]=temp2[0];
 					yvals[counter][j]=temp2[1];
-					tw.append(""+(counter+1)+"\t"+j+"\t"+temp2[0]+"\t"+temp2[1]+"\t"+temp2[2]+"\t"+temp2[3]+"\t"+temp2[4]+"\n");
+					tw.append(""+(counter+1)+"\t"+j+"\t"+temp2[0]+"\t"+temp2[1]+"\t"+temp2[2]+"\t"+temp2[3]+"\t"+temp2[7]+"\n");
 				}
 				counter++;
 			}

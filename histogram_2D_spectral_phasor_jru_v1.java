@@ -48,9 +48,14 @@ public class histogram_2D_spectral_phasor_jru_v1 implements PlugIn {
 		ImageStack intstack=new ImageStack(width,height);
 		float[] cosvals=new float[nchans];
 		float[] sinvals=new float[nchans];
-		for(int i=0;i<nchans;i++){
-			cosvals[i]=(float)Math.cos(2.0*Math.PI*((double)(i*harmonic)/(double)nchans));
-			sinvals[i]=(float)Math.sin(2.0*Math.PI*((double)(i*harmonic)/(double)nchans));
+		if(nchans==4){
+			cosvals=new float[]{1.0f,-1.0f,-1.0f,1.0f};
+			sinvals=new float[]{1.0f,1.0f,-1.0f,-1.0f};
+		} else {
+			for(int i=0;i<nchans;i++){
+				cosvals[i]=(float)Math.cos(2.0*Math.PI*((double)(i*harmonic)/(double)nchans));
+				sinvals[i]=(float)Math.sin(2.0*Math.PI*((double)(i*harmonic)/(double)nchans));
+			}
 		}
 		for(int k=0;k<result_slices;k++){
 			float[] intensity=new float[width*height];
